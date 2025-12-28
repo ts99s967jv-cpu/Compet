@@ -32,6 +32,35 @@ struct SettingsView: View {
           .onChange(of: store.theme) { _, _ in store.saveAll() }
         }
 
+        if let profile = store.profile {
+          Section("Power-ups inventory") {
+            ForEach(PowerUpID.allCases) { id in
+              HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                  HStack {
+                    Text(id.title)
+                    Spacer()
+                    Text(id.rarity.title)
+                      .font(.footnote)
+                      .foregroundStyle(.secondary)
+                  }
+                  Text(id.description)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                }
+                Text("×\(profile.inventory.count(of: id))")
+                  .font(.headline)
+                  .monospacedDigit()
+              }
+              .padding(.vertical, 2)
+            }
+
+            Button("Grant demo power-ups") {
+              InventoryService(store: store).grantDemoPack()
+            }
+          }
+        }
+
         Section {
           Button("Sign out", role: .destructive) {
             store.signOut()

@@ -44,6 +44,19 @@ private struct InviteRow: View {
           .foregroundStyle(invite.status == .pending ? .secondary : .primary)
       }
 
+      HStack(spacing: 8) {
+        Text("\(invite.settings.activity.title) • \(invite.settings.timeLimitDays)d • \(invite.settings.winCondition.title)")
+          .font(.footnote)
+          .foregroundStyle(.secondary)
+          .lineLimit(2)
+        Spacer()
+        if !invite.settings.enabledPowerUps.isEmpty {
+          Text("Power-ups: \(invite.settings.enabledPowerUps.count)")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
+      }
+
       if isIncoming {
         Text("From \(invite.from.displayName) (@\(invite.from.handle))")
           .font(.footnote)

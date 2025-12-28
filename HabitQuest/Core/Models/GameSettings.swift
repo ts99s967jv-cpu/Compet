@@ -49,12 +49,18 @@ enum GameActivity: String, Codable, CaseIterable, Identifiable {
 enum GameWinCondition: String, Codable, CaseIterable, Identifiable {
   /// “Whoever reaches the most points by the end of the time.”
   case mostPointsAtEnd
+  /// Level vs level goal: each day alternates player; must beat previous day's score, or lose.
+  case levelVsLevelGoal
+  /// Tier-based elimination: head-to-head eliminations until last player standing.
+  case eliminationLastManStanding
 
   var id: String { rawValue }
 
   var title: String {
     switch self {
     case .mostPointsAtEnd: "Most points at end"
+    case .levelVsLevelGoal: "Level vs level goal (daily beat-the-score)"
+    case .eliminationLastManStanding: "Elimination (last man standing)"
     }
   }
 }
@@ -66,6 +72,10 @@ struct GameSettings: Codable, Equatable, Hashable {
   /// Competition length in days.
   var timeLimitDays: Int
   var winCondition: GameWinCondition
+  /// Used only for `.levelVsLevelGoal` as the first day's target.
+  var levelVsLevelStartingTarget: Int
+  /// Power-ups/debuffs allowed for this match (match creator toggles these).
+  var enabledPowerUps: [PowerUpID]
   /// Placeholder for future structured rules. (e.g. “No treadmills”, “Rest day allowed”, etc.)
   var customRulesNote: String
 
@@ -75,6 +85,8 @@ struct GameSettings: Codable, Equatable, Hashable {
       activity: .steps,
       timeLimitDays: 7,
       winCondition: .mostPointsAtEnd,
+      levelVsLevelStartingTarget: 10_000,
+      enabledPowerUps: [],
       customRulesNote: ""
     )
   }

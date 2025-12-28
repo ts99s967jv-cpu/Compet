@@ -25,7 +25,7 @@ struct InviteToGameSheet: View {
           TextField("Game title", text: $title)
         }
 
-        GameSettingsForm(settings: $settings, availableModes: [.oneOnOne])
+        GameSettingsForm(settings: $settings, availableModes: [.oneOnOne], inventory: store.profile?.inventory)
 
         Section {
           Button("Send invite") {

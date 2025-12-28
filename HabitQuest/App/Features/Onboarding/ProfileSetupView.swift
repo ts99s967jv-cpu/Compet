@@ -89,6 +89,7 @@ struct ProfileSetupView: View {
       gender: gender,
       fitnessLevel: fitnessLevel,
       visibility: visibility,
+      inventory: .empty,
       createdAt: now,
       updatedAt: now
     )
