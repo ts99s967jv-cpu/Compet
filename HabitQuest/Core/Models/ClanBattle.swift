@@ -16,6 +16,7 @@ struct ClanBattle: Codable, Equatable, Identifiable, Hashable {
   var title: String
   var createdAt: Date
   var status: ClanBattleStatus
+  var settings: GameSettings
 
   var clanAID: String
   var clanAName: String

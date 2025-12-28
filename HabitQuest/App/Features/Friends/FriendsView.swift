@@ -86,8 +86,12 @@ private struct SearchResultRow: View {
         Button("Invite") { invite() }
           .buttonStyle(.bordered)
       } else {
-        Button("Add") { addFriend() }
-          .buttonStyle(.borderedProminent)
+        HStack(spacing: 8) {
+          Button("Invite") { invite() }
+            .buttonStyle(.bordered)
+          Button("Add") { addFriend() }
+            .buttonStyle(.borderedProminent)
+        }
       }
     }
   }

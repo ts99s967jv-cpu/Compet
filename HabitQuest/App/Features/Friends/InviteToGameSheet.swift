@@ -6,6 +6,7 @@ struct InviteToGameSheet: View {
 
   let friend: PublicUser
   @State private var title: String = "7-day Steps Battle"
+  @State private var settings: GameSettings = .default(mode: .oneOnOne)
 
   var body: some View {
     NavigationStack {
@@ -24,9 +25,11 @@ struct InviteToGameSheet: View {
           TextField("Game title", text: $title)
         }
 
+        GameSettingsForm(settings: $settings, availableModes: [.oneOnOne])
+
         Section {
           Button("Send invite") {
-            GameInvitesService(store: store).invite(friend: friend, title: title)
+            GameInvitesService(store: store).invite(friend: friend, title: title, settings: settings)
             dismiss()
           }
           .buttonStyle(.borderedProminent)
