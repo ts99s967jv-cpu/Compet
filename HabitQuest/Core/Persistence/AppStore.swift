@@ -10,6 +10,9 @@ final class AppStore {
     static let theme = "habitquest.theme"
     static let friends = "habitquest.friends"
     static let invites = "habitquest.invites"
+    static let clans = "habitquest.clans"
+    static let clanInvites = "habitquest.clanInvites"
+    static let clanBattles = "habitquest.clanBattles"
   }
 
   private let encoder = JSONEncoder()
@@ -22,6 +25,10 @@ final class AppStore {
 
   var friends: [Friend] = []
   var invites: [GameInvite] = []
+
+  var clans: [Clan] = []
+  var clanInvites: [ClanInvite] = []
+  var clanBattles: [ClanBattle] = []
 
   init(kv: KeyValueStore = UserDefaultsStore()) {
     self.kv = kv
@@ -39,6 +46,9 @@ final class AppStore {
     theme = load(AppTheme.self, key: Keys.theme) ?? .system
     friends = load([Friend].self, key: Keys.friends) ?? []
     invites = load([GameInvite].self, key: Keys.invites) ?? []
+    clans = load([Clan].self, key: Keys.clans) ?? []
+    clanInvites = load([ClanInvite].self, key: Keys.clanInvites) ?? []
+    clanBattles = load([ClanBattle].self, key: Keys.clanBattles) ?? []
   }
 
   func saveAll() {
@@ -47,6 +57,9 @@ final class AppStore {
     save(theme, key: Keys.theme)
     save(friends, key: Keys.friends)
     save(invites, key: Keys.invites)
+    save(clans, key: Keys.clans)
+    save(clanInvites, key: Keys.clanInvites)
+    save(clanBattles, key: Keys.clanBattles)
   }
 
   func signOut() {
@@ -54,6 +67,9 @@ final class AppStore {
     profile = nil
     friends = []
     invites = []
+    clans = []
+    clanInvites = []
+    clanBattles = []
     saveAll()
   }
 
@@ -77,6 +93,41 @@ final class AppStore {
   func updateInvite(_ invite: GameInvite) {
     guard let idx = invites.firstIndex(where: { $0.id == invite.id }) else { return }
     invites[idx] = invite
+    saveAll()
+  }
+
+  func addClan(_ clan: Clan) {
+    clans.append(clan)
+    clans.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    saveAll()
+  }
+
+  func updateClan(_ clan: Clan) {
+    guard let idx = clans.firstIndex(where: { $0.id == clan.id }) else { return }
+    clans[idx] = clan
+    clans.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    saveAll()
+  }
+
+  func addClanInvite(_ invite: ClanInvite) {
+    clanInvites.insert(invite, at: 0)
+    saveAll()
+  }
+
+  func updateClanInvite(_ invite: ClanInvite) {
+    guard let idx = clanInvites.firstIndex(where: { $0.id == invite.id }) else { return }
+    clanInvites[idx] = invite
+    saveAll()
+  }
+
+  func addClanBattle(_ battle: ClanBattle) {
+    clanBattles.insert(battle, at: 0)
+    saveAll()
+  }
+
+  func updateClanBattle(_ battle: ClanBattle) {
+    guard let idx = clanBattles.firstIndex(where: { $0.id == battle.id }) else { return }
+    clanBattles[idx] = battle
     saveAll()
   }
 
