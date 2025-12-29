@@ -51,11 +51,41 @@ struct CompetitionsView: View {
             .dsSectionHeader()
 
           VStack(spacing: DS.Spacing.m) {
-            if store.publicGames.isEmpty {
+            let systemEvents = store.publicGames.filter { $0.visibility == .systemEvent }.sorted { ($0.isPinned ? 0 : 1, $0.title) < ($1.isPinned ? 0 : 1, $1.title) }
+            let publicLobbies = store.publicGames.filter { $0.visibility == .public && $0.status != .finished }
+            let privateLobbies = store.publicGames.filter { $0.visibility == .private && ($0.contains(userID: store.profile?.id ?? "") || $0.createdBy.id == (store.profile?.id ?? "")) }
+
+            if !systemEvents.isEmpty {
+              Text("System events")
+                .dsSectionHeader()
+              ForEach(systemEvents) { game in
+                PublicGameCard(game: game) {
+                  selectedPublicGameID = game.id
+                }
+                .padding(.horizontal, DS.Spacing.xl)
+              }
+            }
+
+            if !privateLobbies.isEmpty {
+              Text("Private lobbies")
+                .dsSectionHeader()
+              ForEach(privateLobbies) { game in
+                PublicGameCard(game: game) {
+                  selectedPublicGameID = game.id
+                }
+                .padding(.horizontal, DS.Spacing.xl)
+              }
+            }
+
+            if publicLobbies.isEmpty && systemEvents.isEmpty {
               publicEmptyState
                 .padding(.horizontal, DS.Spacing.xl)
             } else {
-              ForEach(store.publicGames.filter { $0.status == .open }) { game in
+              if !publicLobbies.isEmpty {
+                Text("Browse")
+                  .dsSectionHeader()
+              }
+              ForEach(publicLobbies.filter { $0.status == .open }) { game in
                 PublicGameCard(game: game) {
                   selectedPublicGameID = game.id
                 }
@@ -167,6 +197,47 @@ struct CompetitionsView: View {
     let other = PublicUser(id: "u_public_host", displayName: "Sam", handle: "samfit", visibility: .public)
 
     store.publicGames = [
+      // System events (pinned, unlimited, no restrictions).
+      PublicGame(
+        id: "sys_kom",
+        title: "King of the Month (Official)",
+        createdAt: .now,
+        createdBy: PublicUser(id: "system", displayName: "HabitQuest", handle: "habitquest", visibility: .public),
+        visibility: .systemEvent,
+        isPinned: true,
+        isUnlimitedPlayers: true,
+        settings: {
+          var s = GameSettings.default(mode: .groupFriends)
+          s.winCondition = .kingOfMonth
+          s.scoringMetrics = [.steps, .activeEnergyBurned]
+          s.opponentPolicy = .anyone
+          s.phoneOnlyMetrics = false
+          return s
+        }(),
+        status: .open,
+        maxPlayers: 0,
+        players: []
+      ),
+      PublicGame(
+        id: "sys_koy",
+        title: "King of the Year (Official)",
+        createdAt: .now,
+        createdBy: PublicUser(id: "system", displayName: "HabitQuest", handle: "habitquest", visibility: .public),
+        visibility: .systemEvent,
+        isPinned: true,
+        isUnlimitedPlayers: true,
+        settings: {
+          var s = GameSettings.default(mode: .groupFriends)
+          s.winCondition = .kingOfYear
+          s.scoringMetrics = [.steps, .activeEnergyBurned]
+          s.opponentPolicy = .anyone
+          s.phoneOnlyMetrics = false
+          return s
+        }(),
+        status: .open,
+        maxPlayers: 0,
+        players: []
+      ),
       PublicGame(
         id: "pg_1",
         title: "Weekend Steps Open",
@@ -270,7 +341,7 @@ private struct PublicGameCard: View {
             .font(DS.Typography.section)
             .foregroundStyle(DS.Palette.text(scheme))
           Spacer()
-          Text("\(game.players.count)/\(game.maxPlayers)")
+          Text(playerCountText(game))
             .font(DS.Typography.caption.weight(.semibold))
             .foregroundStyle(DS.Palette.subtext(scheme))
             .monospacedDigit()
@@ -286,7 +357,7 @@ private struct PublicGameCard: View {
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
           Spacer()
-          Text("Host: \(game.createdBy.displayName)")
+          Text(game.visibility == .systemEvent ? "Pinned event" : "Host: \(game.createdBy.displayName)")
             .font(DS.Typography.caption.weight(.semibold))
             .foregroundStyle(DS.Palette.subtext(scheme))
         }
@@ -294,6 +365,11 @@ private struct PublicGameCard: View {
       .dsCard()
     }
     .buttonStyle(.plain)
+  }
+
+  private func playerCountText(_ game: PublicGame) -> String {
+    if game.isUnlimitedPlayers { return "\(game.players.count)/∞" }
+    return "\(game.players.count)/\(game.maxPlayers)"
   }
 }
 
@@ -359,11 +435,16 @@ private struct ActiveGameDetailSheet: View {
     NavigationStack {
       ScrollView {
         VStack(alignment: .leading, spacing: DS.Spacing.l) {
-          if let game, let elim = game.elimination, game.settings.winCondition == .eliminationLastManStanding {
+          if let game,
+             let elim = game.elimination,
+             (game.settings.winCondition == .eliminationLastManStanding
+              || game.settings.winCondition == .kingOfMonth
+              || game.settings.winCondition == .kingOfYear) {
             VStack(alignment: .leading, spacing: DS.Spacing.s) {
               Text(game.title)
                 .font(DS.Typography.title)
-              Text("Elimination • Bottom player removed every 24h • Up to 12 players")
+              Text(game.settings.winCondition == .eliminationLastManStanding ? "Elimination • Bottom player removed daily" :
+                    (game.settings.winCondition == .kingOfMonth ? "King of the Month • Bottom removed weekly (until month end)" : "King of the Year • Bottom removed monthly (until year end)"))
                 .font(DS.Typography.body)
                 .foregroundStyle(DS.Palette.subtext(scheme))
             }
@@ -377,7 +458,7 @@ private struct ActiveGameDetailSheet: View {
                 .font(DS.Typography.caption)
                 .foregroundStyle(DS.Palette.subtext(scheme))
 
-              let cutoff = Calendar.current.date(byAdding: .hour, value: elim.roundLengthHours, to: elim.roundStartedAt) ?? .now
+              let cutoff = nextCutoff(from: elim.roundStartedAt, cadence: elim.cadence) ?? .now
               Text("Next elimination: \(cutoff.formatted(date: .abbreviated, time: .shortened))")
                 .font(DS.Typography.caption)
                 .foregroundStyle(DS.Palette.subtext(scheme))
@@ -469,6 +550,18 @@ private struct ActiveGameDetailSheet: View {
       }
     }
     .task { await loadMyHealthPoints() }
+  }
+
+  private func nextCutoff(from start: Date, cadence: EliminationCadence) -> Date? {
+    let cal = Calendar.current
+    switch cadence {
+    case .daily:
+      return cal.date(byAdding: .day, value: 1, to: start)
+    case .weekly:
+      return cal.date(byAdding: .day, value: 7, to: start)
+    case .monthly:
+      return cal.date(byAdding: .month, value: 1, to: start)
+    }
   }
 
   private func loadMyHealthPoints() async {

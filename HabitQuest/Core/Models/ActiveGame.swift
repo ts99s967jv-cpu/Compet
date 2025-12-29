@@ -7,11 +7,29 @@ enum ActiveGameStatus: String, Codable, CaseIterable, Identifiable {
   var id: String { rawValue }
 }
 
+enum EliminationCadence: String, Codable, CaseIterable, Identifiable {
+  case daily
+  case weekly
+  case monthly
+
+  var id: String { rawValue }
+
+  var title: String {
+    switch self {
+    case .daily: "Daily"
+    case .weekly: "Weekly"
+    case .monthly: "Monthly"
+    }
+  }
+}
+
 struct EliminationState: Codable, Equatable, Hashable {
-  /// The start time of the current 24h round.
+  /// The start time of the current round window.
   var roundStartedAt: Date
-  /// Fixed at 24 hours for this mode (kept configurable for future).
-  var roundLengthHours: Int
+  /// Cadence for eliminations.
+  var cadence: EliminationCadence
+  /// Optional end date (e.g. end of month/year).
+  var endsAt: Date?
   /// Incremented each time an elimination occurs.
   var roundIndex: Int
 

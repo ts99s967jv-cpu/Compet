@@ -53,6 +53,10 @@ enum GameWinCondition: String, Codable, CaseIterable, Identifiable {
   case levelVsLevelGoal
   /// Tier-based elimination: head-to-head eliminations until last player standing.
   case eliminationLastManStanding
+  /// Elimination held weekly, ending at month end.
+  case kingOfMonth
+  /// Elimination held monthly, ending at year end.
+  case kingOfYear
 
   var id: String { rawValue }
 
@@ -61,6 +65,8 @@ enum GameWinCondition: String, Codable, CaseIterable, Identifiable {
     case .mostPointsAtEnd: "Most points at end"
     case .levelVsLevelGoal: "Level vs level goal (daily beat-the-score)"
     case .eliminationLastManStanding: "Elimination (last man standing)"
+    case .kingOfMonth: "King of the Month"
+    case .kingOfYear: "King of the Year"
     }
   }
 }

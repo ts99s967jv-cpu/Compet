@@ -12,13 +12,24 @@ final class PublicGamesService {
     guard let me = store.profile?.asPublicUser() else { return }
     let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
 
-    let cap = settings.winCondition == .eliminationLastManStanding ? 12 : 50
+    let cap: Int
+    switch settings.winCondition {
+    case .eliminationLastManStanding:
+      cap = 12
+    case .kingOfMonth, .kingOfYear:
+      cap = 100
+    default:
+      cap = 50
+    }
     let clampedMax = min(cap, max(2, maxPlayers))
     let game = PublicGame(
       id: UUID().uuidString,
       title: trimmed.isEmpty ? "Public Challenge" : trimmed,
       createdAt: Date(),
       createdBy: me,
+      visibility: .public,
+      isPinned: false,
+      isUnlimitedPlayers: false,
       settings: settings,
       status: .open,
       maxPlayers: clampedMax,
@@ -32,19 +43,25 @@ final class PublicGamesService {
     let me = profile.asPublicUser()
     guard var game = store.publicGames.first(where: { $0.id == gameID }) else { return }
 
-    guard game.status == .open, !game.isFull else { return }
+    // System events can be joined even after "started" (prototype).
+    if game.visibility == .systemEvent {
+      guard game.status != .finished else { return }
+    } else {
+      guard game.status == .open, !game.isFull else { return }
+    }
     if game.contains(userID: me.id) { return }
     guard isAllowedToJoin(game: game, profile: profile) else { return }
 
     game.players.append(PublicGamePlayer(user: me, joinedAt: Date()))
-    if game.players.count >= game.maxPlayers {
+    if !game.isUnlimitedPlayers, game.players.count >= game.maxPlayers {
       game.status = .started
     }
     store.updatePublicGame(game)
 
-    // If this lobby is an elimination game and it just started, spawn an ActiveGame.
-    if game.status == .started, game.settings.winCondition == .eliminationLastManStanding {
-      ActiveGamesService(store: store).startEliminationGame(from: game)
+    // If this lobby is an elimination-style game and it just started, spawn an ActiveGame.
+    if game.status == .started, isEliminationStyle(game.settings.winCondition) {
+      ActiveGamesService(store: store).startEliminationStyleGame(from: game)
+    }
     }
   }
 
@@ -75,12 +92,21 @@ final class PublicGamesService {
     game.status = .started
     store.updatePublicGame(game)
 
-    if game.settings.winCondition == .eliminationLastManStanding {
-      ActiveGamesService(store: store).startEliminationGame(from: game)
+    if isEliminationStyle(game.settings.winCondition) {
+      ActiveGamesService(store: store).startEliminationStyleGame(from: game)
     }
   }
 
   private func isAllowedToJoin(game: PublicGame, profile: UserProfile) -> Bool {
+    // System events are open to everyone regardless of restrictions.
+    if game.visibility == .systemEvent { return true }
+
+    // Private lobbies require a friend relationship with the host (local prototype).
+    if game.visibility == .private {
+      if profile.id == game.createdBy.id { return true }
+      return store.friends.contains(where: { $0.user.id == game.createdBy.id })
+    }
+
     switch game.settings.opponentPolicy {
     case .anyone:
       return true
@@ -89,6 +115,10 @@ final class PublicGamesService {
     case .noTrackerOnly:
       return !profile.hasFitnessTracker
     }
+  }
+
+  private func isEliminationStyle(_ win: GameWinCondition) -> Bool {
+    win == .eliminationLastManStanding || win == .kingOfMonth || win == .kingOfYear
   }
 }
 
