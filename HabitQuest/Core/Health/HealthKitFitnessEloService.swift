@@ -69,18 +69,18 @@ final class HealthKitFitnessEloService {
     // Normalize each metric to 0...1 then weighted average.
     var parts: [String: Double] = [:]
 
-    let steps = scoreLinear(inputs.avgDailySteps28d, min: 2_000, max: 15_000)
+    let steps = scoreLinear(inputs.avgDailySteps28d, lower: 2_000, upper: 15_000)
     parts["steps"] = steps
 
     let sleep = scoreBell(inputs.avgSleepHours28d, center: 8.0, tolerance: 3.0) // best near 8h
     parts["sleep"] = sleep
 
     // Resting HR: lower is generally better (within reason). Best ~50-60, clamp to 40-100.
-    let rhr = scoreLinear(inputs.avgRestingHr28d, min: 40, max: 100, invert: true)
+    let rhr = scoreLinear(inputs.avgRestingHr28d, lower: 40, upper: 100, invert: true)
     parts["resting_hr"] = rhr
 
     // HRV SDNN: higher is better. Typical 20-120ms.
-    let hrv = scoreLinear(inputs.avgHrvMs28d, min: 20, max: 120)
+    let hrv = scoreLinear(inputs.avgHrvMs28d, lower: 20, upper: 120)
     parts["hrv"] = hrv
 
     // VO2 max: normalize against age/gender expected bands.
@@ -88,7 +88,7 @@ final class HealthKitFitnessEloService {
     parts["vo2max"] = vo2
 
     // SpO2: typical 95-100%. Use 90-100 clamp.
-    let spo2 = scoreLinear(inputs.avgSpO2_28d, min: 0.90, max: 0.99)
+    let spo2 = scoreLinear(inputs.avgSpO2_28d, lower: 0.90, upper: 0.99)
     parts["spo2"] = spo2
 
     // Respiratory rate: best near ~16 breaths/min. Penalize far from center.
@@ -119,14 +119,14 @@ final class HealthKitFitnessEloService {
     let elo = Int((composite * 3000).rounded())
 
     parts["composite"] = composite
-    return (min(3000, max(0, elo)), parts)
+    return (Swift.min(3000, Swift.max(0, elo)), parts)
   }
 
-  private func scoreLinear(_ value: Double?, min: Double, max: Double, invert: Bool = false) -> Double {
+  private func scoreLinear(_ value: Double?, lower: Double, upper: Double, invert: Bool = false) -> Double {
     guard let value else { return .nan }
-    guard max > min else { return .nan }
-    let t = (value - min) / (max - min)
-    let clamped = max(0, min(1, t))
+    guard upper > lower else { return .nan }
+    let t = (value - lower) / (upper - lower)
+    let clamped = Swift.max(0, Swift.min(1, t))
     return invert ? (1 - clamped) : clamped
   }
 
@@ -158,7 +158,7 @@ final class HealthKitFitnessEloService {
     }
 
     // Map [expected - spread, expected + spread] to [0, 1].
-    return scoreLinear(value, min: expected - spread, max: expected + spread)
+    return scoreLinear(value, lower: expected - spread, upper: expected + spread)
   }
 
   // MARK: - Fetch
