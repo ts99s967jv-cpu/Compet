@@ -12,7 +12,8 @@ final class PublicGamesService {
     guard let me = store.profile?.asPublicUser() else { return }
     let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
 
-    let clampedMax = min(50, max(2, maxPlayers))
+    let cap = settings.winCondition == .eliminationLastManStanding ? 12 : 50
+    let clampedMax = min(cap, max(2, maxPlayers))
     let game = PublicGame(
       id: UUID().uuidString,
       title: trimmed.isEmpty ? "Public Challenge" : trimmed,
@@ -38,6 +39,11 @@ final class PublicGamesService {
       game.status = .started
     }
     store.updatePublicGame(game)
+
+    // If this lobby is an elimination game and it just started, spawn an ActiveGame.
+    if game.status == .started, game.settings.winCondition == .eliminationLastManStanding {
+      ActiveGamesService(store: store).startEliminationGame(from: game)
+    }
   }
 
   func leave(gameID: String) {

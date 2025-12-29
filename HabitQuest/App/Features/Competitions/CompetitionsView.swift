@@ -6,6 +6,7 @@ struct CompetitionsView: View {
 
   @State private var showCreatePublicGame: Bool = false
   @State private var selectedPublicGameID: String?
+  @State private var selectedActiveGameID: String?
 
   var body: some View {
     NavigationStack {
@@ -26,7 +27,8 @@ struct CompetitionsView: View {
 
           VStack(spacing: DS.Spacing.m) {
             let comps = competitionCards
-            if comps.isEmpty {
+            let activeGames = store.activeGames
+            if comps.isEmpty && activeGames.isEmpty {
               emptyState
                 .padding(.horizontal, DS.Spacing.xl)
             } else {
@@ -34,6 +36,13 @@ struct CompetitionsView: View {
                 CompetitionCardView(card: card)
                   .padding(.horizontal, DS.Spacing.xl)
                   .animation(.easeInOut(duration: 0.25), value: card.leaderName)
+              }
+
+              ForEach(activeGames) { game in
+                ActiveGameCard(game: game) {
+                  selectedActiveGameID = game.id
+                }
+                .padding(.horizontal, DS.Spacing.xl)
               }
             }
           }
@@ -80,8 +89,15 @@ struct CompetitionsView: View {
       )) { item in
         PublicGameDetailSheet(store: store, gameID: item.id)
       }
+      .sheet(item: Binding(
+        get: { selectedActiveGameID.map { IdentifiedID(id: $0) } },
+        set: { selectedActiveGameID = $0?.id }
+      )) { item in
+        ActiveGameDetailSheet(store: store, gameID: item.id)
+      }
       .onAppear {
         seedPublicGamesIfNeeded()
+        ActiveGamesService(store: store).tick()
       }
     }
   }
@@ -276,6 +292,168 @@ private struct PublicGameCard: View {
   }
 }
 
+private struct ActiveGameCard: View {
+  @Environment(\.colorScheme) private var scheme
+  let game: ActiveGame
+  let tapped: () -> Void
+
+  var body: some View {
+    Button(action: tapped) {
+      VStack(alignment: .leading, spacing: DS.Spacing.s) {
+        HStack {
+          Text(game.title)
+            .font(DS.Typography.section)
+            .foregroundStyle(DS.Palette.text(scheme))
+          Spacer()
+          Text(game.status == .active ? "Active" : "Finished")
+            .font(DS.Typography.caption.weight(.semibold))
+            .foregroundStyle(game.status == .active ? DS.Palette.accent : DS.Palette.subtext(scheme))
+        }
+
+        Text("\(game.settings.activity.title) • \(game.settings.winCondition.title)")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+          .lineLimit(2)
+
+        if game.settings.winCondition == .eliminationLastManStanding, let elim = game.elimination {
+          HStack {
+            Text("Players: \(remainingCount(game, elim))")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .monospacedDigit()
+            Spacer()
+            Text("Round \(elim.roundIndex + 1)")
+              .font(DS.Typography.caption.weight(.semibold))
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .monospacedDigit()
+          }
+        }
+      }
+      .dsCard()
+    }
+    .buttonStyle(.plain)
+  }
+
+  private func remainingCount(_ game: ActiveGame, _ elim: EliminationState) -> Int {
+    game.players.filter { !elim.eliminatedUserIDs.contains($0.id) }.count
+  }
+}
+
+private struct ActiveGameDetailSheet: View {
+  @Environment(\.dismiss) private var dismiss
+  @Bindable var store: AppStore
+  @Environment(\.colorScheme) private var scheme
+
+  let gameID: String
+
+  private var game: ActiveGame? { store.activeGames.first(where: { $0.id == gameID }) }
+
+  var body: some View {
+    NavigationStack {
+      ScrollView {
+        VStack(alignment: .leading, spacing: DS.Spacing.l) {
+          if let game, let elim = game.elimination, game.settings.winCondition == .eliminationLastManStanding {
+            VStack(alignment: .leading, spacing: DS.Spacing.s) {
+              Text(game.title)
+                .font(DS.Typography.title)
+              Text("Elimination • Bottom player removed every 24h • Up to 12 players")
+                .font(DS.Typography.body)
+                .foregroundStyle(DS.Palette.subtext(scheme))
+            }
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.top, DS.Spacing.l)
+
+            VStack(alignment: .leading, spacing: DS.Spacing.s) {
+              Text("Current round")
+                .font(DS.Typography.section)
+              Text("Round \(elim.roundIndex + 1)")
+                .font(DS.Typography.caption)
+                .foregroundStyle(DS.Palette.subtext(scheme))
+
+              let cutoff = Calendar.current.date(byAdding: .hour, value: elim.roundLengthHours, to: elim.roundStartedAt) ?? .now
+              Text("Next elimination: \(cutoff.formatted(date: .abbreviated, time: .shortened))")
+                .font(DS.Typography.caption)
+                .foregroundStyle(DS.Palette.subtext(scheme))
+            }
+            .dsCard()
+            .padding(.horizontal, DS.Spacing.xl)
+
+            VStack(alignment: .leading, spacing: DS.Spacing.s) {
+              Text("Leaderboard (prototype points)")
+                .font(DS.Typography.section)
+
+              let svc = ActiveGamesService(store: store)
+              let remaining = game.players.filter { !elim.eliminatedUserIDs.contains($0.id) }
+              let rows = remaining
+                .map { ($0, svc.pointsFor(userID: $0.id, roundIndex: elim.roundIndex, seed: elim.roundStartedAt)) }
+                .sorted { $0.1 > $1.1 }
+
+              ForEach(Array(rows.enumerated()), id: \.offset) { idx, row in
+                HStack {
+                  Text("#\(idx + 1)")
+                    .font(DS.Typography.caption)
+                    .foregroundStyle(DS.Palette.subtext(scheme))
+                    .frame(width: 28, alignment: .leading)
+                    .monospacedDigit()
+                  Text(row.0.displayName)
+                    .font(DS.Typography.body.weight(.semibold))
+                  Spacer()
+                  Text("\(row.1)")
+                    .font(DS.Typography.body.weight(.semibold))
+                    .monospacedDigit()
+                }
+                if idx != rows.count - 1 {
+                  Divider().overlay(DS.Palette.separator(scheme))
+                }
+              }
+            }
+            .dsCard()
+            .padding(.horizontal, DS.Spacing.xl)
+
+            if !elim.eliminatedUserIDs.isEmpty {
+              VStack(alignment: .leading, spacing: DS.Spacing.s) {
+                Text("Eliminated")
+                  .font(DS.Typography.section)
+                ForEach(elim.eliminatedUserIDs, id: \.self) { id in
+                  Text(game.players.first(where: { $0.id == id })?.displayName ?? "Unknown")
+                    .font(DS.Typography.body)
+                    .foregroundStyle(DS.Palette.subtext(scheme))
+                }
+              }
+              .dsCard()
+              .padding(.horizontal, DS.Spacing.xl)
+            }
+
+            Button {
+              withAnimation(.easeInOut(duration: 0.25)) {
+                ActiveGamesService(store: store).simulateEndOfRound(gameID: gameID)
+              }
+            } label: {
+              Text("Simulate 24h elimination (prototype)")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, DS.Spacing.m)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(DS.Palette.accent)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.top, DS.Spacing.s)
+          }
+
+          Spacer(minLength: DS.Spacing.xxl)
+        }
+        .padding(.bottom, DS.Spacing.xxl)
+      }
+      .dsScreenBackground()
+      .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button("Close") { dismiss() }
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+      }
+    }
+  }
+}
+
 private struct PublicGameDetailSheet: View {
   @Environment(\.dismiss) private var dismiss
   @Bindable var store: AppStore
@@ -401,7 +579,7 @@ private struct CreatePublicGameSheet: View {
                   .stroke(DS.Palette.separator(scheme), lineWidth: 1)
               )
 
-            Stepper(value: $maxPlayers, in: 2...50) {
+            Stepper(value: $maxPlayers, in: 2...playerCap(settings)) {
               HStack {
                 Text("Max players")
                   .font(DS.Typography.body)
@@ -411,6 +589,12 @@ private struct CreatePublicGameSheet: View {
                   .foregroundStyle(DS.Palette.subtext(scheme))
                   .monospacedDigit()
               }
+            }
+
+            if settings.winCondition == .eliminationLastManStanding {
+              Text("Elimination games support up to 12 players. Bottom player is removed every 24h until one remains.")
+                .font(DS.Typography.caption)
+                .foregroundStyle(DS.Palette.subtext(scheme))
             }
           }
           .dsCard()
@@ -452,6 +636,10 @@ private struct CreatePublicGameSheet: View {
         }
       }
     }
+  }
+
+  private func playerCap(_ settings: GameSettings) -> Int {
+    settings.winCondition == .eliminationLastManStanding ? 12 : 50
   }
 }
 

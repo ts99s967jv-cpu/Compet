@@ -15,6 +15,7 @@ final class AppStore {
     static let clanBattles = "habitquest.clanBattles"
     static let habits = "habitquest.habits"
     static let publicGames = "habitquest.publicGames"
+    static let activeGames = "habitquest.activeGames"
   }
 
   private let encoder = JSONEncoder()
@@ -34,6 +35,7 @@ final class AppStore {
 
   var habits: [Habit] = []
   var publicGames: [PublicGame] = []
+  var activeGames: [ActiveGame] = []
 
   init(kv: KeyValueStore = UserDefaultsStore()) {
     self.kv = kv
@@ -56,6 +58,7 @@ final class AppStore {
     clanBattles = load([ClanBattle].self, key: Keys.clanBattles) ?? []
     habits = load([Habit].self, key: Keys.habits) ?? []
     publicGames = load([PublicGame].self, key: Keys.publicGames) ?? []
+    activeGames = load([ActiveGame].self, key: Keys.activeGames) ?? []
   }
 
   func saveAll() {
@@ -69,6 +72,7 @@ final class AppStore {
     save(clanBattles, key: Keys.clanBattles)
     save(habits, key: Keys.habits)
     save(publicGames, key: Keys.publicGames)
+    save(activeGames, key: Keys.activeGames)
   }
 
   func signOut() {
@@ -81,6 +85,7 @@ final class AppStore {
     clanBattles = []
     habits = []
     publicGames = []
+    activeGames = []
     saveAll()
   }
 
@@ -411,6 +416,20 @@ final class AppStore {
 
   func removePublicGame(gameID: String) {
     publicGames.removeAll { $0.id == gameID }
+    saveAll()
+  }
+
+  // MARK: - Active games
+
+  func addActiveGame(_ game: ActiveGame) {
+    if activeGames.contains(where: { $0.id == game.id }) { return }
+    activeGames.insert(game, at: 0)
+    saveAll()
+  }
+
+  func updateActiveGame(_ game: ActiveGame) {
+    guard let idx = activeGames.firstIndex(where: { $0.id == game.id }) else { return }
+    activeGames[idx] = game
     saveAll()
   }
 
