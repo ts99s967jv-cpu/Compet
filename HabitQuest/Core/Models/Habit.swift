@@ -167,6 +167,44 @@ struct Habit: Codable, Equatable, Identifiable, Hashable {
 }
 
 extension Habit {
+  enum Audience {
+    case owner
+    case otherUser
+  }
+
+  /// Whether this habit should be shown to the given audience.
+  /// - Public: visible
+  /// - Private: hidden
+  /// - Secret: visible but masked
+  func isVisible(to audience: Audience) -> Bool {
+    switch audience {
+    case .owner:
+      return true
+    case .otherUser:
+      return visibility != .private
+    }
+  }
+
+  /// Display name for the given audience. Secret habits are masked.
+  func displayName(for audience: Audience) -> String {
+    switch audience {
+    case .owner:
+      return name
+    case .otherUser:
+      return visibility == .secret ? "Secret habit" : name
+    }
+  }
+
+  /// Display description for the given audience. Secret habits are masked.
+  func displayDescription(for audience: Audience) -> String {
+    switch audience {
+    case .owner:
+      return description
+    case .otherUser:
+      return visibility == .secret ? "Hidden details" : description
+    }
+  }
+
   static func template(_ id: HabitTemplateID) -> Habit {
     switch id {
     case .stopSmoking:
