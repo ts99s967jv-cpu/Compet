@@ -253,6 +253,8 @@ private struct HabitTodayCard: View {
     fitnessLevel: .intermediate,
     visibility: .public,
     hasFitnessTracker: true,
+    fitnessElo: 1750,
+    fitnessEloUpdatedAt: .now,
     inventory: .empty,
     createdAt: .now,
     updatedAt: .now
@@ -279,6 +281,8 @@ private struct HabitTodayCard: View {
     fitnessLevel: .intermediate,
     visibility: .public,
     hasFitnessTracker: true,
+    fitnessElo: 1750,
+    fitnessEloUpdatedAt: .now,
     inventory: .empty,
     createdAt: .now,
     updatedAt: .now

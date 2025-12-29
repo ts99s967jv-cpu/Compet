@@ -154,6 +154,8 @@ private struct HabitGridCard: View {
     fitnessLevel: .intermediate,
     visibility: .public,
     hasFitnessTracker: true,
+    fitnessElo: 1750,
+    fitnessEloUpdatedAt: .now,
     inventory: .empty,
     createdAt: .now,
     updatedAt: .now

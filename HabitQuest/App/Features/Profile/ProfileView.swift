@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
   @Bindable var store: AppStore
   @Environment(\.colorScheme) private var scheme
+  @State private var isRefreshingElo: Bool = false
 
   var body: some View {
     ScrollView {
@@ -21,6 +22,12 @@ struct ProfileView: View {
           HealthStatCard(title: "Sleep", value: "7h 18m", subtitle: "Avg last 7 days", icon: "bed.double")
         }
         .padding(.horizontal, DS.Spacing.xl)
+
+        Text("Fitness ELO")
+          .dsSectionHeader()
+
+        FitnessEloCard(store: store, isRefreshing: $isRefreshingElo)
+          .padding(.horizontal, DS.Spacing.xl)
 
         Text("Appearance")
           .dsSectionHeader()
@@ -201,6 +208,82 @@ private struct InventoryCard: View {
   }
 }
 
+private struct FitnessEloCard: View {
+  @Environment(\.colorScheme) private var scheme
+  @Bindable var store: AppStore
+  @Binding var isRefreshing: Bool
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: DS.Spacing.s) {
+      HStack {
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Fitness ELO")
+            .font(DS.Typography.section)
+
+          Text("0–3000 • uses historical HealthKit trends")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+        Spacer()
+        if let elo = store.profile?.fitnessElo, store.profile?.hasFitnessTracker == true {
+          Text("\(elo)")
+            .font(DS.Typography.stat)
+            .monospacedDigit()
+        } else {
+          Text("—")
+            .font(DS.Typography.stat)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+      }
+
+      if store.profile?.hasFitnessTracker != true {
+        Text("Requires a fitness tracker. Enable “Fitness tracker” to compute your ELO.")
+          .font(DS.Typography.body)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+      } else {
+        if let ts = store.profile?.fitnessEloUpdatedAt {
+          Text("Updated \(ts.formatted(date: .abbreviated, time: .shortened))")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        } else {
+          Text("Not computed yet.")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+
+        if let elo = store.profile?.fitnessElo {
+          let range = FitnessEloService(store: store).recommendedMatchRange(elo: elo)
+          Text("Matchmaking target: \(range.lowerBound)–\(range.upperBound)")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+
+        Button {
+          Task {
+            isRefreshing = true
+            _ = await FitnessEloService(store: store).refresh()
+            isRefreshing = false
+          }
+        } label: {
+          HStack {
+            if isRefreshing {
+              ProgressView().tint(DS.Palette.accent)
+            }
+            Text(isRefreshing ? "Updating…" : "Update Fitness ELO")
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, DS.Spacing.s)
+          }
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(DS.Palette.accent)
+        .disabled(isRefreshing)
+        .padding(.top, DS.Spacing.s)
+      }
+    }
+    .dsCard()
+  }
+}
+
 #Preview("Profile") {
   let store = AppStore(kv: InMemoryStore())
   store.account = Account(appleUserID: "preview", createdAt: .now)
@@ -213,6 +296,8 @@ private struct InventoryCard: View {
     fitnessLevel: .intermediate,
     visibility: .public,
     hasFitnessTracker: true,
+    fitnessElo: 1820,
+    fitnessEloUpdatedAt: .now,
     inventory: UserInventory(quantities: [.pointsBoost12x: 3, .enemyPoints08x: 2, .freezeTime1h: 1, .unoReverseDebuffs: 0]),
     createdAt: .now,
     updatedAt: .now
