@@ -153,6 +153,7 @@ private struct HabitGridCard: View {
     gender: .preferNotToSay,
     fitnessLevel: .intermediate,
     visibility: .public,
+    hasFitnessTracker: true,
     inventory: .empty,
     createdAt: .now,
     updatedAt: .now

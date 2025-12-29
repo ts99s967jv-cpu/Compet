@@ -72,6 +72,10 @@ struct GameSettings: Codable, Equatable, Hashable {
   /// Metrics included in the points total (e.g. steps + calories burned).
   /// This is the "custom rule" used for scoring.
   var scoringMetrics: [ScoreMetric]
+  /// Fairness setting: who is allowed to join (based on their profile tracker flag).
+  var opponentPolicy: TrackerOpponentPolicy
+  /// If enabled, restrict scoring metrics to phone-collected metrics (steps + calories).
+  var phoneOnlyMetrics: Bool
   /// Competition length in days.
   var timeLimitDays: Int
   var winCondition: GameWinCondition
@@ -87,6 +91,8 @@ struct GameSettings: Codable, Equatable, Hashable {
       mode: mode,
       activity: .steps,
       scoringMetrics: [.steps],
+      opponentPolicy: .anyone,
+      phoneOnlyMetrics: false,
       timeLimitDays: 7,
       winCondition: .mostPointsAtEnd,
       levelVsLevelStartingTarget: 10_000,
@@ -99,7 +105,8 @@ struct GameSettings: Codable, Equatable, Hashable {
 extension GameSettings {
   var scoringSummary: String {
     if scoringMetrics.isEmpty { return "Points" }
-    return scoringMetrics.map(\.shortTitle).joined(separator: " + ")
+    let base = scoringMetrics.map(\.shortTitle).joined(separator: " + ")
+    return phoneOnlyMetrics ? "\(base) (phone-only)" : base
   }
 }
 

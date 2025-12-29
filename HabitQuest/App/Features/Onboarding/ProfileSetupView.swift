@@ -9,6 +9,7 @@ struct ProfileSetupView: View {
   @State private var gender: Gender = .preferNotToSay
   @State private var fitnessLevel: FitnessLevel = .beginner
   @State private var visibility: ProfileVisibility = .public
+  @State private var hasFitnessTracker: Bool = false
   @Environment(\.colorScheme) private var scheme
 
   private var canSave: Bool {
@@ -92,6 +93,8 @@ struct ProfileSetupView: View {
                 Text(level.title).tag(level)
               }
             }
+
+            Toggle("I use a fitness tracker (e.g. Apple Watch)", isOn: $hasFitnessTracker)
           }
           .dsCard()
           .padding(.horizontal, DS.Spacing.xl)
@@ -148,6 +151,7 @@ struct ProfileSetupView: View {
       gender: gender,
       fitnessLevel: fitnessLevel,
       visibility: visibility,
+      hasFitnessTracker: hasFitnessTracker,
       inventory: .empty,
       createdAt: now,
       updatedAt: now

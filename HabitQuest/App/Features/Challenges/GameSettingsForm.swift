@@ -23,10 +23,25 @@ struct GameSettingsForm: View {
     }
 
     Section("Scoring (Health)") {
+      Toggle("Phone-only metrics", isOn: Binding(
+        get: { settings.phoneOnlyMetrics },
+        set: { newValue in
+          settings.phoneOnlyMetrics = newValue
+          if newValue {
+            // Restrict to phone-friendly metrics.
+            settings.scoringMetrics = settings.scoringMetrics.filter { $0 == .steps || $0 == .activeEnergyBurned }
+            if settings.scoringMetrics.isEmpty { settings.scoringMetrics = [.steps] }
+          }
+        }
+      ))
+
       ForEach(ScoreMetric.allCases) { metric in
         Toggle(isOn: Binding(
           get: { settings.scoringMetrics.contains(metric) },
           set: { isOn in
+            if settings.phoneOnlyMetrics && !(metric == .steps || metric == .activeEnergyBurned) {
+              return
+            }
             if isOn {
               if !settings.scoringMetrics.contains(metric) { settings.scoringMetrics.append(metric) }
             } else {
@@ -40,9 +55,21 @@ struct GameSettingsForm: View {
         )) {
           Text(metric.title)
         }
+        .disabled(settings.phoneOnlyMetrics && !(metric == .steps || metric == .activeEnergyBurned))
       }
 
       Text("Each player’s points are calculated from their own Apple Health data. Comparing players requires syncing scores across devices (backend).")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+    }
+
+    Section("Fairness") {
+      Picker("Opponents", selection: $settings.opponentPolicy) {
+        ForEach(TrackerOpponentPolicy.allCases) { p in
+          Text(p.title).tag(p)
+        }
+      }
+      Text("Players can self-report whether they use a fitness tracker. This setting limits who can join.")
         .font(.footnote)
         .foregroundStyle(.secondary)
     }

@@ -502,6 +502,17 @@ private struct PublicGameDetailSheet: View {
     store.publicGames.first(where: { $0.id == gameID })
   }
 
+  private func isEligible(profile: UserProfile, game: PublicGame) -> Bool {
+    switch game.settings.opponentPolicy {
+    case .anyone:
+      return true
+    case .trackerOnly:
+      return profile.hasFitnessTracker
+    case .noTrackerOnly:
+      return !profile.hasFitnessTracker
+    }
+  }
+
   var body: some View {
     NavigationStack {
       ScrollView {
@@ -547,6 +558,7 @@ private struct PublicGameDetailSheet: View {
             let isIn = meID.map { game.contains(userID: $0) } ?? false
             let isOwner = (store.profile?.id == game.createdBy.id)
             let canStartNow = isOwner && game.status == .open && game.players.count >= 2
+            let eligible = store.profile.map { isEligible(profile: $0, game: game) } ?? true
 
             if canStartNow {
               Button {
@@ -579,9 +591,16 @@ private struct PublicGameDetailSheet: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(DS.Palette.accent)
-            .disabled(game.status != .open || (!isIn && game.isFull))
+            .disabled(game.status != .open || (!isIn && game.isFull) || (!isIn && !eligible))
             .padding(.horizontal, DS.Spacing.xl)
             .padding(.top, DS.Spacing.s)
+
+            if !eligible && !isIn, let profile = store.profile {
+              Text(disabledReason(profile: profile, game: game))
+                .font(DS.Typography.caption)
+                .foregroundStyle(DS.Palette.subtext(scheme))
+                .padding(.horizontal, DS.Spacing.xl)
+            }
           }
 
           Spacer(minLength: DS.Spacing.xxl)
@@ -595,6 +614,17 @@ private struct PublicGameDetailSheet: View {
             .foregroundStyle(DS.Palette.subtext(scheme))
         }
       }
+    }
+  }
+
+  private func disabledReason(profile: UserProfile, game: PublicGame) -> String {
+    switch game.settings.opponentPolicy {
+    case .anyone:
+      return ""
+    case .trackerOnly:
+      return "This game is set to tracker users only. Enable “Fitness tracker” in your Profile to join."
+    case .noTrackerOnly:
+      return "This game is set to no-tracker users only. Disable “Fitness tracker” in your Profile to join."
     }
   }
 }
@@ -708,6 +738,7 @@ private struct CreatePublicGameSheet: View {
     gender: .preferNotToSay,
     fitnessLevel: .intermediate,
     visibility: .public,
+    hasFitnessTracker: true,
     inventory: .empty,
     createdAt: .now,
     updatedAt: .now

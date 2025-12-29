@@ -252,6 +252,7 @@ private struct HabitTodayCard: View {
     gender: .preferNotToSay,
     fitnessLevel: .intermediate,
     visibility: .public,
+    hasFitnessTracker: true,
     inventory: .empty,
     createdAt: .now,
     updatedAt: .now
@@ -277,6 +278,7 @@ private struct HabitTodayCard: View {
     gender: .preferNotToSay,
     fitnessLevel: .intermediate,
     visibility: .public,
+    hasFitnessTracker: true,
     inventory: .empty,
     createdAt: .now,
     updatedAt: .now

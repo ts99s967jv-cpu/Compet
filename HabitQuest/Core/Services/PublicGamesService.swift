@@ -28,11 +28,13 @@ final class PublicGamesService {
   }
 
   func join(gameID: String) {
-    guard let me = store.profile?.asPublicUser() else { return }
+    guard let profile = store.profile else { return }
+    let me = profile.asPublicUser()
     guard var game = store.publicGames.first(where: { $0.id == gameID }) else { return }
 
     guard game.status == .open, !game.isFull else { return }
     if game.contains(userID: me.id) { return }
+    guard isAllowedToJoin(game: game, profile: profile) else { return }
 
     game.players.append(PublicGamePlayer(user: me, joinedAt: Date()))
     if game.players.count >= game.maxPlayers {
@@ -63,7 +65,8 @@ final class PublicGamesService {
 
   /// Allows the lobby owner to start early (useful if the lobby isn't filling).
   func startNow(gameID: String) {
-    guard let me = store.profile?.asPublicUser() else { return }
+    guard let profile = store.profile else { return }
+    let me = profile.asPublicUser()
     guard var game = store.publicGames.first(where: { $0.id == gameID }) else { return }
     guard game.status == .open else { return }
     guard game.createdBy.id == me.id else { return }
@@ -77,19 +80,14 @@ final class PublicGamesService {
     }
   }
 
-  /// Allows the lobby owner to start before the lobby is full.
-  func startNow(gameID: String) {
-    guard let me = store.profile?.asPublicUser() else { return }
-    guard var game = store.publicGames.first(where: { $0.id == gameID }) else { return }
-    guard game.status == .open else { return }
-    guard game.createdBy.id == me.id else { return }
-    guard game.players.count >= 2 else { return }
-
-    game.status = .started
-    store.updatePublicGame(game)
-
-    if game.settings.winCondition == .eliminationLastManStanding {
-      ActiveGamesService(store: store).startEliminationGame(from: game)
+  private func isAllowedToJoin(game: PublicGame, profile: UserProfile) -> Bool {
+    switch game.settings.opponentPolicy {
+    case .anyone:
+      return true
+    case .trackerOnly:
+      return profile.hasFitnessTracker
+    case .noTrackerOnly:
+      return !profile.hasFitnessTracker
     }
   }
 }

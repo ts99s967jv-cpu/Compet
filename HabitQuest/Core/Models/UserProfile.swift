@@ -12,6 +12,10 @@ struct UserProfile: Codable, Equatable, Identifiable {
   var fitnessLevel: FitnessLevel
   var visibility: ProfileVisibility
 
+  /// Whether the user has a dedicated fitness tracker (e.g. Apple Watch).
+  /// Used for fairness matchmaking rules.
+  var hasFitnessTracker: Bool
+
   /// Earned power-ups/debuffs (inventory).
   var inventory: UserInventory
 
@@ -41,6 +45,8 @@ extension UserProfile {
     gender = try c.decode(Gender.self, forKey: .gender)
     fitnessLevel = try c.decode(FitnessLevel.self, forKey: .fitnessLevel)
     visibility = try c.decode(ProfileVisibility.self, forKey: .visibility)
+
+    hasFitnessTracker = (try? c.decode(Bool.self, forKey: .hasFitnessTracker)) ?? false
 
     inventory = (try? c.decode(UserInventory.self, forKey: .inventory)) ?? .empty
 

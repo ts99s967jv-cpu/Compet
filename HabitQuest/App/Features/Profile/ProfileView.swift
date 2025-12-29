@@ -40,6 +40,27 @@ struct ProfileView: View {
         .dsCard()
         .padding(.horizontal, DS.Spacing.xl)
 
+        Text("Fairness")
+          .dsSectionHeader()
+
+        if store.profile != nil {
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Toggle("Fitness tracker", isOn: Binding(
+              get: { store.profile?.hasFitnessTracker ?? false },
+              set: { newValue in
+                store.profile?.hasFitnessTracker = newValue
+                store.profile?.updatedAt = Date()
+                store.saveAll()
+              }
+            ))
+            Text("Used for fair matchmaking in games that require/avoid tracker users.")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+          }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
+        }
+
         Text("Power-ups")
           .dsSectionHeader()
 
@@ -191,6 +212,7 @@ private struct InventoryCard: View {
     gender: .preferNotToSay,
     fitnessLevel: .intermediate,
     visibility: .public,
+    hasFitnessTracker: true,
     inventory: UserInventory(quantities: [.pointsBoost12x: 3, .enemyPoints08x: 2, .freezeTime1h: 1, .unoReverseDebuffs: 0]),
     createdAt: .now,
     updatedAt: .now
