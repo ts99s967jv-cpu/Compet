@@ -482,7 +482,12 @@ private struct ActiveGameDetailSheet: View {
 
     do {
       try await hk.requestAuthorization(for: game.settings.scoringMetrics)
-      let pts = try await hk.points(metrics: game.settings.scoringMetrics, start: start, end: end)
+      let pts = try await hk.points(
+        metrics: game.settings.scoringMetrics,
+        start: start,
+        end: end,
+        sourceFilter: game.settings.phoneOnlyMetrics ? .iPhoneOnly : .any
+      )
       myHealthPoints = pts
       healthStatusText = "Your points (Apple Health): \(Int(pts.rounded())) • \(game.settings.scoringSummary)"
     } catch {

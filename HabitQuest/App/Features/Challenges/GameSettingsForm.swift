@@ -58,7 +58,7 @@ struct GameSettingsForm: View {
         .disabled(settings.phoneOnlyMetrics && !(metric == .steps || metric == .activeEnergyBurned))
       }
 
-      Text("Each player’s points are calculated from their own Apple Health data. Comparing players requires syncing scores across devices (backend).")
+      Text("Phone-only games filter HealthKit samples to iPhone-recorded data only (excluding Apple Watch and samples without device attribution). Comparing players still requires syncing scores across devices (backend).")
         .font(.footnote)
         .foregroundStyle(.secondary)
     }
