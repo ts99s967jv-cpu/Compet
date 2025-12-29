@@ -11,14 +11,17 @@ struct SettingsView: View {
             LabeledContent("Name", value: profile.displayName)
             LabeledContent("Handle", value: "@\(profile.handle)")
 
-            Picker("Visibility", selection: $store.profile!.visibility) {
+            Picker("Visibility", selection: Binding(
+              get: { store.profile?.visibility ?? .public },
+              set: { newValue in
+                store.profile?.visibility = newValue
+                store.profile?.updatedAt = Date()
+                store.saveAll()
+              }
+            )) {
               ForEach(ProfileVisibility.allCases) { v in
                 Text(v.title).tag(v)
               }
-            }
-            .onChange(of: store.profile?.visibility) { _, _ in
-              store.profile?.updatedAt = Date()
-              store.saveAll()
             }
           }
         }
