@@ -286,7 +286,7 @@ private struct FitnessEloCard: View {
 
 #Preview("Profile") {
   let store = AppStore(kv: InMemoryStore())
-  store.account = Account(appleUserID: "preview", createdAt: .now)
+  store.account = Account(userID: "preview@example.com", email: "preview@example.com", username: "jordan", createdAt: .now)
   store.profile = UserProfile(
     id: "preview",
     displayName: "Jordan",

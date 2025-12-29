@@ -136,15 +136,15 @@ struct ProfileSetupView: View {
 
   private func prefillIfNeeded() {
     guard store.profile == nil else { return }
-    if displayName.isEmpty { displayName = "You" }
-    if handle.isEmpty { handle = "user\(Int.random(in: 1000...9999))" }
+    if displayName.isEmpty { displayName = store.account?.username.isEmpty == false ? store.account!.username : "You" }
+    if handle.isEmpty { handle = store.account?.username.isEmpty == false ? store.account!.username : "user\(Int.random(in: 1000...9999))" }
   }
 
   private func save() {
     guard let account = store.account else { return }
     let now = Date()
     store.profile = UserProfile(
-      id: account.appleUserID,
+      id: account.userID,
       displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
       handle: normalizedHandle(handle),
       age: age,

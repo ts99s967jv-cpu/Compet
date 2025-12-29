@@ -144,7 +144,7 @@ private struct HabitGridCard: View {
 
 #Preview("Habits") {
   let store = AppStore(kv: InMemoryStore())
-  store.account = Account(appleUserID: "preview", createdAt: .now)
+  store.account = Account(userID: "preview@example.com", email: "preview@example.com", username: "preview", createdAt: .now)
   store.profile = UserProfile(
     id: "preview",
     displayName: "Preview",

@@ -1,10 +1,11 @@
-import AuthenticationServices
 import SwiftUI
 
 struct SignInView: View {
   @Bindable var store: AppStore
   @State private var errorMessage: String?
   @Environment(\.colorScheme) private var scheme
+  @State private var email: String = ""
+  @State private var username: String = ""
 
   var body: some View {
     VStack(spacing: DS.Spacing.xl) {
@@ -21,23 +22,47 @@ struct SignInView: View {
       .padding(.horizontal, DS.Spacing.xl)
 
       VStack(alignment: .leading, spacing: DS.Spacing.m) {
-        SignInWithAppleButton(.signIn) { request in
-          request.requestedScopes = [.fullName, .email]
-        } onCompletion: { result in
-          switch result {
-          case .success(let auth):
-            guard let credential = auth.credential as? ASAuthorizationAppleIDCredential else {
-              errorMessage = "Couldn’t read Apple ID credential."
-              return
-            }
-            store.account = Account(appleUserID: credential.user, createdAt: Date())
-            store.saveAll()
-          case .failure(let error):
-            errorMessage = error.localizedDescription
-          }
+        Text("Create account")
+          .font(DS.Typography.section)
+
+        TextField("Email address", text: $email)
+          .textInputAutocapitalization(.never)
+          .autocorrectionDisabled()
+          .keyboardType(.emailAddress)
+          .textContentType(.emailAddress)
+          .padding(DS.Spacing.l)
+          .background(
+            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+              .fill(DS.Palette.surface(scheme))
+          )
+          .overlay(
+            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+              .stroke(DS.Palette.separator(scheme), lineWidth: 1)
+          )
+
+        TextField("Username", text: $username)
+          .textInputAutocapitalization(.never)
+          .autocorrectionDisabled()
+          .textContentType(.username)
+          .padding(DS.Spacing.l)
+          .background(
+            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+              .fill(DS.Palette.surface(scheme))
+          )
+          .overlay(
+            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+              .stroke(DS.Palette.separator(scheme), lineWidth: 1)
+          )
+
+        Button {
+          createAccount()
+        } label: {
+          Text("Continue")
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, DS.Spacing.m)
         }
-        .signInWithAppleButtonStyle(scheme == .dark ? .white : .black)
-        .frame(height: 52)
+        .buttonStyle(.borderedProminent)
+        .tint(DS.Palette.accent)
 
         if let errorMessage {
           Text(errorMessage)
@@ -51,7 +76,25 @@ struct SignInView: View {
       Spacer()
     }
     .dsScreenBackground()
-    .navigationBarHidden(true)
+    .navigationBarBackButtonHidden(true)
+  }
+
+  private func createAccount() {
+    errorMessage = nil
+    let e = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    let u = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+    guard e.contains("@"), e.contains(".") else {
+      errorMessage = "Enter a valid email."
+      return
+    }
+    guard u.count >= 3, u.count <= 20, u.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) else {
+      errorMessage = "Username must be 3–20 characters (letters, numbers, underscore)."
+      return
+    }
+
+    store.account = Account(userID: e, email: e, username: u, createdAt: Date())
+    store.saveAll()
   }
 }
 
