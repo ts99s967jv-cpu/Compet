@@ -5,6 +5,7 @@ struct TodayView: View {
   @Environment(\.colorScheme) private var scheme
 
   @State private var now: Date = Date()
+  @State private var logHabit: Habit?
 
   var body: some View {
     ScrollView {
@@ -22,13 +23,10 @@ struct TodayView: View {
           } else {
             ForEach(store.activeHabits) { habit in
               HabitTodayCard(
+                store: store,
                 habit: habit,
-                isCompleted: store.isHabitCompletedToday(habit, now: now),
-                completeTapped: {
-                  withAnimation(.easeInOut(duration: 0.25)) {
-                    store.toggleCompleteToday(habitID: habit.id, now: now)
-                  }
-                }
+                now: now,
+                logTapped: { logHabit = habit }
               )
             }
           }
@@ -42,10 +40,19 @@ struct TodayView: View {
     .onAppear {
       // Seed a few habits for first-run UI (only if empty).
       if store.habits.isEmpty {
-        store.addHabit(name: "Take vitamins")
-        store.addHabit(name: "Workout")
-        store.addHabit(name: "Meditation")
+        store.addTemplateHabit(.drinkWater)
+        store.addTemplateHabit(.moreSteps)
+        _ = store.addCustomHabit(
+          name: "Meditation",
+          description: "A short session to reset.",
+          behavior: .build,
+          goal: .streak(period: .day),
+          visibility: .private
+        )
       }
+    }
+    .sheet(item: $logHabit) { habit in
+      LogProgressSheet(store: store, habit: habit)
     }
   }
 
@@ -124,11 +131,15 @@ private struct ProgressRing: View {
 
 private struct HabitTodayCard: View {
   @Environment(\.colorScheme) private var scheme
+  @Bindable var store: AppStore
   let habit: Habit
-  let isCompleted: Bool
-  let completeTapped: () -> Void
+  let now: Date
+  let logTapped: () -> Void
 
   var body: some View {
+    let isCompleted = store.isHabitCompletedToday(habit, now: now)
+    let streak = store.habitStreakCount(habit, now: now)
+
     HStack(spacing: DS.Spacing.m) {
       VStack(alignment: .leading, spacing: DS.Spacing.xs) {
         Text(habit.name)
@@ -138,8 +149,8 @@ private struct HabitTodayCard: View {
           HStack(spacing: 6) {
             Image(systemName: "flame.fill")
               .font(.caption)
-              .foregroundStyle(DS.Palette.accent.opacity(habit.streakDays > 0 ? 1 : 0.35))
-            Text("\(habit.streakDays)d")
+              .foregroundStyle(DS.Palette.accent.opacity(streak > 0 ? 1 : 0.35))
+            Text("\(streak)\(habit.goal.period == .week ? "w" : "d")")
               .font(DS.Typography.caption)
               .foregroundStyle(DS.Palette.subtext(scheme))
               .monospacedDigit()
@@ -148,12 +159,51 @@ private struct HabitTodayCard: View {
           Text(isCompleted ? "Completed" : "Not yet")
             .font(DS.Typography.caption)
             .foregroundStyle(isCompleted ? DS.Palette.accent : DS.Palette.subtext(scheme))
+
+          if habit.visibility == .secret {
+            Text("Secret")
+              .font(DS.Typography.caption.weight(.semibold))
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .padding(.horizontal, 8)
+              .padding(.vertical, 4)
+              .background(
+                Capsule(style: .continuous).fill(DS.Palette.separator(scheme).opacity(0.9))
+              )
+          }
+        }
+
+        if case .target(_, let unit, let period, let target) = habit.goal {
+          let progress = store.habitProgressInCurrentPeriod(habit, now: now) ?? 0
+          ProgressView(value: min(1, progress / max(0.0001, target))) {
+            EmptyView()
+          }
+          .tint(DS.Palette.accent)
+          .frame(maxWidth: 180)
+
+          Text("\(format(progress)) / \(format(target)) \(unit)")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+            .monospacedDigit()
         }
       }
 
       Spacer()
 
-      Button(action: completeTapped) {
+      actionButton(isCompleted: isCompleted)
+    }
+    .dsCard()
+    .animation(.easeInOut(duration: 0.25), value: isCompleted)
+  }
+
+  @ViewBuilder
+  private func actionButton(isCompleted: Bool) -> some View {
+    switch habit.goal {
+    case .streak:
+      Button {
+        withAnimation(.easeInOut(duration: 0.25)) {
+          store.toggleCheckInToday(habitID: habit.id, now: now)
+        }
+      } label: {
         ZStack {
           Circle()
             .fill(DS.Palette.accent.opacity(isCompleted ? 1 : 0.18))
@@ -165,9 +215,29 @@ private struct HabitTodayCard: View {
         }
       }
       .buttonStyle(.plain)
+
+    case .target:
+      Button {
+        logTapped()
+      } label: {
+        ZStack {
+          Circle()
+            .fill(DS.Palette.accent.opacity(0.18))
+            .frame(width: 42, height: 42)
+          Image(systemName: "plus")
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(DS.Palette.accent)
+        }
+      }
+      .buttonStyle(.plain)
     }
-    .dsCard()
-    .animation(.easeInOut(duration: 0.25), value: isCompleted)
+  }
+
+  private func format(_ v: Double) -> String {
+    if v.rounded(.towardZero) == v {
+      return String(Int(v))
+    }
+    return String(format: "%.1f", v)
   }
 }
 
@@ -186,11 +256,13 @@ private struct HabitTodayCard: View {
     createdAt: .now,
     updatedAt: .now
   )
-  store.habits = [
-    Habit(name: "Take vitamins", streakDays: 6, lastCompletedDay: Calendar.current.startOfDay(for: .now)),
-    Habit(name: "Workout", streakDays: 3, lastCompletedDay: nil),
-    Habit(name: "Meditation", streakDays: 10, lastCompletedDay: nil),
-  ]
+  var water = Habit.template(.drinkWater)
+  water.progressByDayKey[Habit.dayKey(for: .now, calendar: .current)] = 1.2
+  var steps = Habit.template(.moreSteps)
+  steps.progressByDayKey[Habit.dayKey(for: .now, calendar: .current)] = 8420
+  var med = Habit(kind: .custom, name: "Meditation", description: "10 minutes", behavior: .build, goal: .streak(period: .day), visibility: .secret)
+  med.completedDayKeys.insert(Habit.dayKey(for: .now, calendar: .current))
+  store.habits = [water, steps, med]
   return TodayView(store: store)
 }
 
@@ -209,12 +281,74 @@ private struct HabitTodayCard: View {
     createdAt: .now,
     updatedAt: .now
   )
-  store.habits = [
-    Habit(name: "Take vitamins", streakDays: 6, lastCompletedDay: Calendar.current.startOfDay(for: .now)),
-    Habit(name: "Workout", streakDays: 3, lastCompletedDay: nil),
-    Habit(name: "Meditation", streakDays: 10, lastCompletedDay: nil),
-  ]
+  var water = Habit.template(.drinkWater)
+  water.progressByDayKey[Habit.dayKey(for: .now, calendar: .current)] = 1.2
+  var steps = Habit.template(.moreSteps)
+  steps.progressByDayKey[Habit.dayKey(for: .now, calendar: .current)] = 8420
+  var med = Habit(kind: .custom, name: "Meditation", description: "10 minutes", behavior: .build, goal: .streak(period: .day), visibility: .secret)
+  med.completedDayKeys.insert(Habit.dayKey(for: .now, calendar: .current))
+  store.habits = [water, steps, med]
   return TodayView(store: store)
     .preferredColorScheme(.dark)
 }
 
+private struct LogProgressSheet: View {
+  @Environment(\.dismiss) private var dismiss
+  @Environment(\.colorScheme) private var scheme
+  @Bindable var store: AppStore
+  let habit: Habit
+
+  @State private var amountText: String = ""
+
+  var body: some View {
+    NavigationStack {
+      VStack(alignment: .leading, spacing: DS.Spacing.l) {
+        Text(habit.name)
+          .font(DS.Typography.title)
+          .padding(.top, DS.Spacing.l)
+
+        if case .target(_, let unit, _, _) = habit.goal {
+          Text("Log progress (\(unit))")
+            .font(DS.Typography.body)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+
+          TextField("Amount", text: $amountText)
+            .keyboardType(.decimalPad)
+            .padding(DS.Spacing.l)
+            .background(
+              RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+                .fill(DS.Palette.surface(scheme))
+            )
+            .overlay(
+              RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+                .stroke(DS.Palette.separator(scheme), lineWidth: 1)
+            )
+        }
+
+        Spacer()
+
+        Button {
+          let v = Double(amountText.replacingOccurrences(of: ",", with: ".")) ?? 0
+          if v > 0 {
+            store.addProgressToday(habitID: habit.id, amount: v)
+          }
+          dismiss()
+        } label: {
+          Text("Add")
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, DS.Spacing.m)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(DS.Palette.accent)
+      }
+      .padding(.horizontal, DS.Spacing.xl)
+      .dsScreenBackground()
+      .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button("Close") { dismiss() }
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+      }
+    }
+  }
+}

@@ -4,6 +4,8 @@ struct HabitsView: View {
   @Bindable var store: AppStore
 
   @State private var showAdd: Bool = false
+  @State private var logHabit: Habit?
+  @State private var editHabit: Habit?
 
   private let columns = [
     GridItem(.flexible(), spacing: DS.Spacing.m),
@@ -15,10 +17,36 @@ struct HabitsView: View {
       ScrollView {
         LazyVGrid(columns: columns, spacing: DS.Spacing.m) {
           ForEach(store.activeHabits) { habit in
-            HabitGridCard(habit: habit)
+            HabitGridCard(store: store, habit: habit)
               .onTapGesture {
                 withAnimation(.easeInOut(duration: 0.25)) {
-                  store.toggleCompleteToday(habitID: habit.id)
+                  switch habit.goal {
+                  case .streak:
+                    store.toggleCheckInToday(habitID: habit.id)
+                  case .target:
+                    logHabit = habit
+                  }
+                }
+              }
+              .contextMenu {
+                Button {
+                  editHabit = habit
+                } label: {
+                  Label("Edit", systemImage: "slider.horizontal.3")
+                }
+
+                if habit.behavior == .breakHabit {
+                  Button(role: .destructive) {
+                    store.markSlipToday(habitID: habit.id)
+                  } label: {
+                    Label("Mark slip today", systemImage: "xmark.circle")
+                  }
+                }
+
+                Button {
+                  store.setHabitActive(habit.id, isActive: false)
+                } label: {
+                  Label("Archive", systemImage: "archivebox")
                 }
               }
           }
@@ -40,7 +68,13 @@ struct HabitsView: View {
         }
       }
       .sheet(isPresented: $showAdd) {
-        AddHabitSheet(store: store)
+        AddHabitFlowSheet(store: store)
+      }
+      .sheet(item: $logHabit) { habit in
+        HabitLogProgressSheet(store: store, habit: habit)
+      }
+      .sheet(item: $editHabit) { habit in
+        HabitEditSheet(store: store, habitID: habit.id)
       }
     }
   }
@@ -48,9 +82,13 @@ struct HabitsView: View {
 
 private struct HabitGridCard: View {
   @Environment(\.colorScheme) private var scheme
+  @Bindable var store: AppStore
   let habit: Habit
 
   var body: some View {
+    let streak = store.habitStreakCount(habit)
+    let isCompleted = store.isHabitCompletedToday(habit)
+
     VStack(alignment: .leading, spacing: DS.Spacing.s) {
       Text(habit.name)
         .font(DS.Typography.section)
@@ -61,16 +99,31 @@ private struct HabitGridCard: View {
       HStack {
         HStack(spacing: 6) {
           Circle()
-            .fill(DS.Palette.accent.opacity(habit.streakDays > 0 ? 1 : 0.35))
+            .fill(DS.Palette.accent.opacity(streak > 0 ? 1 : 0.35))
             .frame(width: 8, height: 8)
-          Text("\(habit.streakDays)d streak")
+          Text("\(streak)\(habit.goal.period == .week ? "w" : "d") streak")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
             .monospacedDigit()
         }
         Spacer()
-        Image(systemName: "checkmark.circle.fill")
-          .foregroundStyle(DS.Palette.accent.opacity(0.18))
+        Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+          .foregroundStyle(isCompleted ? DS.Palette.accent : DS.Palette.accent.opacity(0.25))
+          .contentTransition(.symbolEffect(.replace))
+      }
+
+      if case .target(_, let unit, let period, let target) = habit.goal {
+        let progress = store.habitProgressInCurrentPeriod(habit) ?? 0
+        Text("\(format(progress)) / \(format(target)) \(unit)")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+          .monospacedDigit()
+      }
+
+      if habit.visibility == .secret {
+        Text("Secret habit")
+          .font(DS.Typography.caption.weight(.semibold))
+          .foregroundStyle(DS.Palette.subtext(scheme))
       }
     }
     .frame(minHeight: 92, alignment: .topLeading)
@@ -80,57 +133,12 @@ private struct HabitGridCard: View {
         .fill(DS.Palette.accent.opacity(0.06))
     )
   }
-}
 
-private struct AddHabitSheet: View {
-  @Environment(\.dismiss) private var dismiss
-  @Bindable var store: AppStore
-  @Environment(\.colorScheme) private var scheme
-
-  @State private var name: String = ""
-
-  var body: some View {
-    NavigationStack {
-      VStack(alignment: .leading, spacing: DS.Spacing.l) {
-        Text("New habit")
-          .font(DS.Typography.title)
-          .padding(.top, DS.Spacing.l)
-
-        TextField("Habit name", text: $name)
-          .textInputAutocapitalization(.words)
-          .padding(DS.Spacing.l)
-          .background(
-            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
-              .fill(DS.Palette.surface(scheme))
-          )
-          .overlay(
-            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
-              .stroke(DS.Palette.separator(scheme), lineWidth: 1)
-          )
-
-        Spacer()
-
-        Button {
-          store.addHabit(name: name)
-          dismiss()
-        } label: {
-          Text("Add habit")
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, DS.Spacing.m)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(DS.Palette.accent)
-        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-      }
-      .padding(.horizontal, DS.Spacing.xl)
-      .dsScreenBackground()
-      .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          Button("Close") { dismiss() }
-            .foregroundStyle(DS.Palette.subtext(scheme))
-        }
-      }
+  private func format(_ v: Double) -> String {
+    if v.rounded(.towardZero) == v {
+      return String(Int(v))
     }
+    return String(format: "%.1f", v)
   }
 }
 
@@ -149,12 +157,14 @@ private struct AddHabitSheet: View {
     createdAt: .now,
     updatedAt: .now
   )
-  store.habits = [
-    Habit(name: "Take vitamins", streakDays: 6, lastCompletedDay: Calendar.current.startOfDay(for: .now)),
-    Habit(name: "Workout", streakDays: 3, lastCompletedDay: nil),
-    Habit(name: "Meditation", streakDays: 10, lastCompletedDay: nil),
-    Habit(name: "Read 10 pages", streakDays: 2, lastCompletedDay: nil),
-  ]
+  var water = Habit.template(.drinkWater)
+  water.progressByDayKey[Habit.dayKey(for: .now, calendar: .current)] = 1.4
+  var steps = Habit.template(.moreSteps)
+  steps.progressByDayKey[Habit.dayKey(for: .now, calendar: .current)] = 6000
+  var gym = Habit.template(.goToGym)
+  gym.progressByDayKey[Habit.dayKey(for: .now, calendar: .current)] = 1
+  let secret = Habit(kind: .custom, name: "Read 10 pages", description: "", behavior: .build, goal: .streak(period: .day), visibility: .secret)
+  store.habits = [water, steps, gym, secret]
   return HabitsView(store: store)
 }
 

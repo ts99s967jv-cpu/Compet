@@ -144,10 +144,45 @@ final class AppStore {
 
   // MARK: - Habits
 
-  func addHabit(name: String) {
+  var customHabitsCount: Int {
+    habits.filter { $0.kind == .custom }.count
+  }
+
+  func addTemplateHabit(_ templateID: HabitTemplateID) {
+    // Avoid duplicate template habits (one of each template).
+    if habits.contains(where: { $0.templateID == templateID }) { return }
+    habits.insert(Habit.template(templateID), at: 0)
+    saveAll()
+  }
+
+  /// Adds a custom habit. Enforces a maximum of 3 custom habits.
+  func addCustomHabit(
+    name: String,
+    description: String,
+    behavior: HabitBehavior,
+    goal: HabitGoal,
+    visibility: HabitVisibility
+  ) -> Bool {
+    if customHabitsCount >= 3 { return false }
     let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty else { return }
-    habits.insert(Habit(name: trimmed), at: 0)
+    guard !trimmed.isEmpty else { return false }
+    let habit = Habit(
+      kind: .custom,
+      templateID: nil,
+      name: trimmed,
+      description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+      behavior: behavior,
+      goal: goal,
+      visibility: visibility
+    )
+    habits.insert(habit, at: 0)
+    saveAll()
+    return true
+  }
+
+  func updateHabit(_ habit: Habit) {
+    guard let idx = habits.firstIndex(where: { $0.id == habit.id }) else { return }
+    habits[idx] = habit
     saveAll()
   }
 
@@ -157,40 +192,197 @@ final class AppStore {
     saveAll()
   }
 
-  func isHabitCompletedToday(_ habit: Habit, calendar: Calendar = .current, now: Date = Date()) -> Bool {
-    guard let day = habit.lastCompletedDay else { return false }
-    return calendar.isDate(day, inSameDayAs: now)
+  func dayKey(for date: Date, calendar: Calendar = .current) -> String {
+    Habit.dayKey(for: date, calendar: calendar)
   }
 
-  /// Toggles completion for today and updates streak.
-  func toggleCompleteToday(habitID: String, calendar: Calendar = .current, now: Date = Date()) {
+  func isHabitCompletedToday(_ habit: Habit, calendar: Calendar = .current, now: Date = Date()) -> Bool {
+    let key = dayKey(for: now, calendar: calendar)
+    return isHabitCompleted(habit, dayKey: key, calendar: calendar, now: now)
+  }
+
+  func habitProgressToday(_ habit: Habit, calendar: Calendar = .current, now: Date = Date()) -> Double {
+    let key = dayKey(for: now, calendar: calendar)
+    return habit.progressByDayKey[key] ?? 0
+  }
+
+  func habitProgressInCurrentPeriod(_ habit: Habit, calendar: Calendar = .current, now: Date = Date()) -> Double? {
+    switch habit.goal {
+    case .streak:
+      return nil
+    case .target(_, _, let period, _):
+      switch period {
+      case .day:
+        return habitProgressToday(habit, calendar: calendar, now: now)
+      case .week:
+        let keys = weekDayKeys(containing: now, calendar: calendar)
+        return keys.reduce(0.0) { $0 + (habit.progressByDayKey[$1] ?? 0) }
+      }
+    }
+  }
+
+  func habitTargetValue(_ habit: Habit) -> Double? {
+    switch habit.goal {
+    case .streak:
+      return nil
+    case .target(_, _, _, let target):
+      return target
+    }
+  }
+
+  /// Toggles a streak-based check-in for today (or logs a gym day).
+  func toggleCheckInToday(habitID: String, calendar: Calendar = .current, now: Date = Date()) {
     guard let idx = habits.firstIndex(where: { $0.id == habitID }) else { return }
     var h = habits[idx]
-
-    let today = calendar.startOfDay(for: now)
-
-    if let last = h.lastCompletedDay, calendar.isDate(last, inSameDayAs: today) {
-      // Uncomplete: revert lastCompletedDay; keep streak conservative (prototype).
-      h.lastCompletedDay = nil
-      h.streakDays = max(0, h.streakDays - 1)
+    let key = dayKey(for: now, calendar: calendar)
+    if h.completedDayKeys.contains(key) {
+      h.completedDayKeys.remove(key)
     } else {
-      // Complete
-      if let last = h.lastCompletedDay {
-        let lastDay = calendar.startOfDay(for: last)
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)
-        if let yesterday, calendar.isDate(lastDay, inSameDayAs: yesterday) {
-          h.streakDays += 1
-        } else {
-          h.streakDays = 1
-        }
-      } else {
-        h.streakDays = 1
-      }
-      h.lastCompletedDay = today
+      h.completedDayKeys.insert(key)
+      // If this is a break-habit and they check in success, ensure today isn't marked as slip.
+      h.slipDayKeys.remove(key)
     }
-
     habits[idx] = h
     saveAll()
+  }
+
+  /// For goal-based habits: add progress for today (e.g. water/steps). If it reaches the target, today counts as complete.
+  func addProgressToday(habitID: String, amount: Double, calendar: Calendar = .current, now: Date = Date()) {
+    guard let idx = habits.firstIndex(where: { $0.id == habitID }) else { return }
+    var h = habits[idx]
+    let key = dayKey(for: now, calendar: calendar)
+    let current = h.progressByDayKey[key] ?? 0
+    h.progressByDayKey[key] = max(0, current + amount)
+    habits[idx] = h
+    saveAll()
+  }
+
+  /// Marks a slip day for break-habits (resets the streak).
+  func markSlipToday(habitID: String, calendar: Calendar = .current, now: Date = Date()) {
+    guard let idx = habits.firstIndex(where: { $0.id == habitID }) else { return }
+    var h = habits[idx]
+    let key = dayKey(for: now, calendar: calendar)
+    h.slipDayKeys.insert(key)
+    h.completedDayKeys.remove(key)
+    habits[idx] = h
+    saveAll()
+  }
+
+  func isHabitCompleted(_ habit: Habit, dayKey: String, calendar: Calendar = .current, now: Date = Date()) -> Bool {
+    switch habit.goal {
+    case .streak(let period):
+      switch period {
+      case .day:
+        if habit.behavior == .breakHabit {
+          // Consider a break-habit “complete” if they did NOT slip and/or explicitly checked in.
+          return !habit.slipDayKeys.contains(dayKey) && habit.completedDayKeys.contains(dayKey)
+        }
+        return habit.completedDayKeys.contains(dayKey)
+      case .week:
+        // Week streak = week meets completion on all required days? For now treat as “any check-in” (placeholder).
+        return habit.completedDayKeys.contains(dayKey)
+      }
+    case .target(_, _, let period, let target):
+      switch period {
+      case .day:
+        let v = habit.progressByDayKey[dayKey] ?? 0
+        return v >= target
+      case .week:
+        let range = weekDayKeys(containing: now, calendar: calendar)
+        let sum = range.reduce(0.0) { $0 + (habit.progressByDayKey[$1] ?? 0) }
+        return sum >= target
+      }
+    }
+  }
+
+  func habitStreakCount(_ habit: Habit, calendar: Calendar = .current, now: Date = Date()) -> Int {
+    switch habit.goal {
+    case .streak(let period):
+      switch period {
+      case .day:
+        return dailyStreak(habit: habit, calendar: calendar, now: now)
+      case .week:
+        return weeklyStreak(habit: habit, calendar: calendar, now: now)
+      }
+    case .target(_, _, let period, _):
+      switch period {
+      case .day:
+        return dailyStreak(habit: habit, calendar: calendar, now: now)
+      case .week:
+        return weeklyTargetStreak(habit: habit, calendar: calendar, now: now)
+      }
+    }
+  }
+
+  private func dailyStreak(habit: Habit, calendar: Calendar, now: Date) -> Int {
+    var count = 0
+    var cursor = calendar.startOfDay(for: now)
+    while true {
+      let key = dayKey(for: cursor, calendar: calendar)
+      let ok: Bool
+      if habit.behavior == .breakHabit {
+        ok = !habit.slipDayKeys.contains(key) && habit.completedDayKeys.contains(key)
+      } else {
+        ok = isHabitCompleted(habit, dayKey: key, calendar: calendar, now: now)
+      }
+      if ok {
+        count += 1
+        guard let prev = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+        cursor = prev
+      } else {
+        break
+      }
+    }
+    return count
+  }
+
+  private func weeklyStreak(habit: Habit, calendar: Calendar, now: Date) -> Int {
+    // Week streak for check-in habits: week counts as complete if at least one completion in that week.
+    var count = 0
+    var weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? calendar.startOfDay(for: now)
+    while true {
+      let keys = weekDayKeys(containing: weekStart, calendar: calendar)
+      let hasAny = keys.contains(where: { habit.completedDayKeys.contains($0) })
+      if hasAny {
+        count += 1
+        guard let prevWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: weekStart) else { break }
+        weekStart = prevWeek
+      } else {
+        break
+      }
+    }
+    return count
+  }
+
+  private func weeklyTargetStreak(habit: Habit, calendar: Calendar, now: Date) -> Int {
+    guard case .target(_, _, .week, let target) = habit.goal else { return 0 }
+    var count = 0
+    var cursor = now
+    while true {
+      guard let interval = calendar.dateInterval(of: .weekOfYear, for: cursor) else { break }
+      let keys = weekDayKeys(containing: interval.start, calendar: calendar)
+      let sum = keys.reduce(0.0) { $0 + (habit.progressByDayKey[$1] ?? 0) }
+      if sum >= target {
+        count += 1
+        guard let prevWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: interval.start) else { break }
+        cursor = prevWeek
+      } else {
+        break
+      }
+    }
+    return count
+  }
+
+  private func weekDayKeys(containing date: Date, calendar: Calendar) -> [String] {
+    guard let interval = calendar.dateInterval(of: .weekOfYear, for: date) else { return [] }
+    var keys: [String] = []
+    var day = interval.start
+    while day < interval.end {
+      keys.append(dayKey(for: day, calendar: calendar))
+      guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+      day = next
+    }
+    return keys
   }
 
   var activeHabits: [Habit] {
