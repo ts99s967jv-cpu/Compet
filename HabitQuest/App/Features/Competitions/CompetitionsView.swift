@@ -126,6 +126,7 @@ struct CompetitionsView: View {
         ActiveGameDetailSheet(store: store, gameID: item.id)
       }
       .onAppear {
+        SystemEventsService(store: store).sync()
         seedPublicGamesIfNeeded()
         ActiveGamesService(store: store).tick()
       }
@@ -190,59 +191,21 @@ struct CompetitionsView: View {
   }
 
   private func seedPublicGamesIfNeeded() {
-    // Local prototype: seed a couple of public lobbies for browsing if empty.
-    guard store.publicGames.isEmpty else { return }
+    // Local prototype: seed a couple of public lobbies for browsing if empty (non-system).
+    if store.publicGames.contains(where: { $0.visibility == .public }) { return }
     guard let me = store.profile?.asPublicUser() else { return }
 
     let other = PublicUser(id: "u_public_host", displayName: "Sam", handle: "samfit", visibility: .public)
 
-    store.publicGames = [
-      // System events (pinned, unlimited, no restrictions).
-      PublicGame(
-        id: "sys_kom",
-        title: "King of the Month (Official)",
-        createdAt: .now,
-        createdBy: PublicUser(id: "system", displayName: "HabitQuest", handle: "habitquest", visibility: .public),
-        visibility: .systemEvent,
-        isPinned: true,
-        isUnlimitedPlayers: true,
-        settings: {
-          var s = GameSettings.default(mode: .groupFriends)
-          s.winCondition = .kingOfMonth
-          s.scoringMetrics = [.steps, .activeEnergyBurned]
-          s.opponentPolicy = .anyone
-          s.phoneOnlyMetrics = false
-          return s
-        }(),
-        status: .open,
-        maxPlayers: 0,
-        players: []
-      ),
-      PublicGame(
-        id: "sys_koy",
-        title: "King of the Year (Official)",
-        createdAt: .now,
-        createdBy: PublicUser(id: "system", displayName: "HabitQuest", handle: "habitquest", visibility: .public),
-        visibility: .systemEvent,
-        isPinned: true,
-        isUnlimitedPlayers: true,
-        settings: {
-          var s = GameSettings.default(mode: .groupFriends)
-          s.winCondition = .kingOfYear
-          s.scoringMetrics = [.steps, .activeEnergyBurned]
-          s.opponentPolicy = .anyone
-          s.phoneOnlyMetrics = false
-          return s
-        }(),
-        status: .open,
-        maxPlayers: 0,
-        players: []
-      ),
+    store.publicGames.insert(contentsOf: [
       PublicGame(
         id: "pg_1",
         title: "Weekend Steps Open",
         createdAt: .now,
         createdBy: other,
+        visibility: .public,
+        isPinned: false,
+        isUnlimitedPlayers: false,
         settings: {
           var s = GameSettings.default(mode: .groupFriends)
           s.scoringMetrics = [.steps, .activeEnergyBurned]
@@ -257,6 +220,9 @@ struct CompetitionsView: View {
         title: "Cycling Distance Sprint",
         createdAt: .now,
         createdBy: me,
+        visibility: .public,
+        isPinned: false,
+        isUnlimitedPlayers: false,
         settings: {
           var s = GameSettings.default(mode: .groupFriends)
           s.activity = .cycling
@@ -268,7 +234,7 @@ struct CompetitionsView: View {
         maxPlayers: 6,
         players: [PublicGamePlayer(user: me, joinedAt: .now)]
       ),
-    ]
+    ], at: 0)
     store.saveAll()
   }
 }
@@ -601,6 +567,7 @@ private struct PublicGameDetailSheet: View {
   }
 
   private func isEligible(profile: UserProfile, game: PublicGame) -> Bool {
+    if game.visibility == .systemEvent { return true }
     switch game.settings.opponentPolicy {
     case .anyone:
       return true
@@ -630,7 +597,7 @@ private struct PublicGameDetailSheet: View {
             VStack(alignment: .leading, spacing: DS.Spacing.s) {
               Text("Players")
                 .font(DS.Typography.section)
-              Text("\(game.players.count) of \(game.maxPlayers)")
+              Text(game.isUnlimitedPlayers ? "\(game.players.count) of ∞" : "\(game.players.count) of \(game.maxPlayers)")
                 .font(DS.Typography.caption)
                 .foregroundStyle(DS.Palette.subtext(scheme))
                 .monospacedDigit()
@@ -655,7 +622,7 @@ private struct PublicGameDetailSheet: View {
             let meID = store.profile?.id
             let isIn = meID.map { game.contains(userID: $0) } ?? false
             let isOwner = (store.profile?.id == game.createdBy.id)
-            let canStartNow = isOwner && game.status == .open && game.players.count >= 2
+            let canStartNow = (game.visibility != .systemEvent) && isOwner && game.status == .open && game.players.count >= 2
             let eligible = store.profile.map { isEligible(profile: $0, game: game) } ?? true
 
             if canStartNow {
@@ -689,7 +656,7 @@ private struct PublicGameDetailSheet: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(DS.Palette.accent)
-            .disabled(game.status != .open || (!isIn && game.isFull) || (!isIn && !eligible))
+            .disabled((game.visibility == .systemEvent ? game.status == .finished : game.status != .open) || (!isIn && game.isFull) || (!isIn && !eligible))
             .padding(.horizontal, DS.Spacing.xl)
             .padding(.top, DS.Spacing.s)
 
@@ -735,6 +702,7 @@ private struct CreatePublicGameSheet: View {
   @State private var title: String = "Open Steps Challenge"
   @State private var maxPlayers: Int = 10
   @State private var settings: GameSettings = .default(mode: .groupFriends)
+  @State private var visibility: PublicGameVisibility = .public
 
   var body: some View {
     NavigationStack {
@@ -773,6 +741,13 @@ private struct CreatePublicGameSheet: View {
               }
             }
 
+            Picker("Visibility", selection: $visibility) {
+              Text("Public").tag(PublicGameVisibility.public)
+              Text("Private (friends)").tag(PublicGameVisibility.private)
+            }
+            .pickerStyle(.segmented)
+            .tint(DS.Palette.accent)
+
             if settings.winCondition == .eliminationLastManStanding {
               Text("Elimination games support up to 12 players. Bottom player is removed every 24h until one remains.")
                 .font(DS.Typography.caption)
@@ -796,7 +771,7 @@ private struct CreatePublicGameSheet: View {
           .padding(.horizontal, DS.Spacing.xl)
 
           Button {
-            PublicGamesService(store: store).createPublicGame(title: title, settings: settings, maxPlayers: maxPlayers)
+            PublicGamesService(store: store).createPublicGame(title: title, settings: settings, maxPlayers: maxPlayers, visibility: visibility)
             dismiss()
           } label: {
             Text("Publish game")

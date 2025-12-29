@@ -54,6 +54,10 @@ final class ActiveGamesService {
 
         let remaining = updated.players.filter { !elim.eliminatedUserIDs.contains($0.id) }
         if remaining.count <= 1 {
+          // System-season games (month/year) shouldn't auto-finish just because nobody joined yet.
+          if let endsAt = elim.endsAt, now < endsAt {
+            break
+          }
           updated.status = .finished
           elim.winnerUserID = remaining.first?.id
           updated.elimination = elim
@@ -197,6 +201,109 @@ final class ActiveGamesService {
     let eventsLeftIncludingThis = max(1, opportunitiesAfterThis + 1)
     let needEliminations = remainingCount - 1
     return max(1, Int(ceil(Double(needEliminations) / Double(eventsLeftIncludingThis))))
+  }
+
+  // MARK: - System events / late join helpers
+
+  func upsertSystemSeasonGame(publicGame: PublicGame, seasonStart: Date, seasonEnd: Date, now: Date = Date()) {
+    let activeID = "ag_" + publicGame.id
+
+    let cadence = cadenceFor(publicGame.settings.winCondition)
+    let (roundStart, roundIndex) = currentRound(seasonStart: seasonStart, cadence: cadence, now: now)
+
+    if var existing = store.activeGames.first(where: { $0.id == activeID }) {
+      if existing.status == .finished { return }
+      existing.settings = publicGame.settings
+      existing.title = publicGame.title
+      existing.players = unionPlayers(existing.players, publicGame.players.map(\.user))
+      if var elim = existing.elimination {
+        elim.cadence = cadence
+        elim.endsAt = seasonEnd
+        // Do NOT rewind roundStartedAt; keep whichever is later.
+        if roundStart > elim.roundStartedAt {
+          elim.roundStartedAt = roundStart
+          elim.roundIndex = max(elim.roundIndex, roundIndex)
+        }
+        existing.elimination = elim
+      } else {
+        existing.elimination = EliminationState(
+          roundStartedAt: roundStart,
+          cadence: cadence,
+          endsAt: seasonEnd,
+          roundIndex: roundIndex,
+          eliminatedUserIDs: [],
+          winnerUserID: nil
+        )
+      }
+      store.updateActiveGame(existing)
+      return
+    }
+
+    let game = ActiveGame(
+      id: activeID,
+      title: publicGame.title,
+      createdAt: seasonStart,
+      settings: publicGame.settings,
+      status: .active,
+      players: publicGame.players.map(\.user),
+      elimination: EliminationState(
+        roundStartedAt: roundStart,
+        cadence: cadence,
+        endsAt: seasonEnd,
+        roundIndex: roundIndex,
+        eliminatedUserIDs: [],
+        winnerUserID: nil
+      )
+    )
+    store.addActiveGame(game)
+  }
+
+  func addPlayerToActiveGame(activeGameID: String, user: PublicUser) {
+    guard var game = store.activeGames.first(where: { $0.id == activeGameID }) else { return }
+    guard game.status == .active else { return }
+    if game.players.contains(where: { $0.id == user.id }) { return }
+    game.players.append(user)
+    store.updateActiveGame(game)
+  }
+
+  func removePlayerFromActiveGame(activeGameID: String, userID: String) {
+    guard var game = store.activeGames.first(where: { $0.id == activeGameID }) else { return }
+    game.players.removeAll { $0.id == userID }
+    store.updateActiveGame(game)
+  }
+
+  private func currentRound(seasonStart: Date, cadence: EliminationCadence, now: Date) -> (Date, Int) {
+    let cal = Calendar.current
+    switch cadence {
+    case .daily:
+      let days = cal.dateComponents([.day], from: seasonStart, to: now).day ?? 0
+      let idx = max(0, days)
+      let start = cal.date(byAdding: .day, value: idx, to: seasonStart) ?? seasonStart
+      return (start, idx)
+    case .weekly:
+      let days = cal.dateComponents([.day], from: seasonStart, to: now).day ?? 0
+      let idx = max(0, days / 7)
+      let start = cal.date(byAdding: .day, value: idx * 7, to: seasonStart) ?? seasonStart
+      return (start, idx)
+    case .monthly:
+      let from = cal.dateComponents([.year, .month], from: seasonStart)
+      let to = cal.dateComponents([.year, .month], from: now)
+      let months = (to.year ?? 0 - (from.year ?? 0)) * 12 + ((to.month ?? 0) - (from.month ?? 0))
+      let idx = max(0, months)
+      let start = cal.date(byAdding: .month, value: idx, to: seasonStart) ?? seasonStart
+      return (start, idx)
+    }
+  }
+
+  private func unionPlayers(_ a: [PublicUser], _ b: [PublicUser]) -> [PublicUser] {
+    var seen: Set<String> = []
+    var out: [PublicUser] = []
+    for u in a + b {
+      if seen.insert(u.id).inserted {
+        out.append(u)
+      }
+    }
+    return out
   }
 }
 

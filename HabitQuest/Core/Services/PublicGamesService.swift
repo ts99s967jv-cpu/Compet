@@ -8,7 +8,7 @@ final class PublicGamesService {
     self.store = store
   }
 
-  func createPublicGame(title: String, settings: GameSettings, maxPlayers: Int) {
+  func createPublicGame(title: String, settings: GameSettings, maxPlayers: Int, visibility: PublicGameVisibility) {
     guard let me = store.profile?.asPublicUser() else { return }
     let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -27,7 +27,7 @@ final class PublicGamesService {
       title: trimmed.isEmpty ? "Public Challenge" : trimmed,
       createdAt: Date(),
       createdBy: me,
-      visibility: .public,
+      visibility: visibility,
       isPinned: false,
       isUnlimitedPlayers: false,
       settings: settings,
@@ -58,10 +58,15 @@ final class PublicGamesService {
     }
     store.updatePublicGame(game)
 
+    // System events must always have an active season game; add the player into it.
+    if game.visibility == .systemEvent {
+      SystemEventsService(store: store).sync()
+      ActiveGamesService(store: store).addPlayerToActiveGame(activeGameID: "ag_" + game.id, user: me)
+    }
+
     // If this lobby is an elimination-style game and it just started, spawn an ActiveGame.
     if game.status == .started, isEliminationStyle(game.settings.winCondition) {
       ActiveGamesService(store: store).startEliminationStyleGame(from: game)
-    }
     }
   }
 
@@ -78,6 +83,11 @@ final class PublicGamesService {
       game.status = .open
     }
     store.updatePublicGame(game)
+
+    // For system events, also remove from the active season game (prototype).
+    if game.visibility == .systemEvent {
+      ActiveGamesService(store: store).removePlayerFromActiveGame(activeGameID: "ag_" + game.id, userID: me.id)
+    }
   }
 
   /// Allows the lobby owner to start early (useful if the lobby isn't filling).
