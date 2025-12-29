@@ -9,6 +9,7 @@ struct ProfileSetupView: View {
   @State private var gender: Gender = .preferNotToSay
   @State private var fitnessLevel: FitnessLevel = .beginner
   @State private var visibility: ProfileVisibility = .public
+  @Environment(\.colorScheme) private var scheme
 
   private var canSave: Bool {
     guard store.account != nil else { return false }
@@ -17,58 +18,116 @@ struct ProfileSetupView: View {
   }
 
   var body: some View {
-    Form {
-      Section {
-        TextField("Display name", text: $displayName)
-          .textInputAutocapitalization(.words)
+    ScrollView {
+      VStack(alignment: .leading, spacing: DS.Spacing.l) {
+        Text("Set up your profile")
+          .font(DS.Typography.title)
+          .padding(.horizontal, DS.Spacing.xl)
+          .padding(.top, DS.Spacing.l)
 
-        TextField("Handle (e.g. samfit)", text: $handle)
-          .textInputAutocapitalization(.never)
-          .autocorrectionDisabled()
-      } header: {
-        Text("Profile")
-      } footer: {
-        Text("Your handle is used for friend search. You can keep your profile private.")
-      }
+        Text("Used for competitions and friend search. Keep it private if you prefer.")
+          .font(DS.Typography.body)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+          .padding(.horizontal, DS.Spacing.xl)
 
-      Section("Basics") {
-        Stepper(value: $age, in: 13...100) {
-          HStack {
-            Text("Age")
-            Spacer()
-            Text("\(age)")
-              .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: DS.Spacing.m) {
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Text("Profile")
+              .font(DS.Typography.section)
+
+            TextField("Display name", text: $displayName)
+              .textInputAutocapitalization(.words)
+              .padding(DS.Spacing.l)
+              .background(
+                RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+                  .fill(DS.Palette.surface(scheme))
+              )
+              .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+                  .stroke(DS.Palette.separator(scheme), lineWidth: 1)
+              )
+
+            TextField("Handle (e.g. samfit)", text: $handle)
+              .textInputAutocapitalization(.never)
+              .autocorrectionDisabled()
+              .padding(DS.Spacing.l)
+              .background(
+                RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+                  .fill(DS.Palette.surface(scheme))
+              )
+              .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+                  .stroke(DS.Palette.separator(scheme), lineWidth: 1)
+              )
           }
-        }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
 
-        Picker("Gender", selection: $gender) {
-          ForEach(Gender.allCases) { g in
-            Text(g.title).tag(g)
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Text("Basics")
+              .font(DS.Typography.section)
+
+            Stepper(value: $age, in: 13...100) {
+              HStack {
+                Text("Age")
+                  .font(DS.Typography.body)
+                Spacer()
+                Text("\(age)")
+                  .font(DS.Typography.body)
+                  .foregroundStyle(DS.Palette.subtext(scheme))
+                  .monospacedDigit()
+              }
+            }
+
+            Divider().overlay(DS.Palette.separator(scheme))
+
+            Picker("Gender", selection: $gender) {
+              ForEach(Gender.allCases) { g in
+                Text(g.title).tag(g)
+              }
+            }
+
+            Picker("Fitness level", selection: $fitnessLevel) {
+              ForEach(FitnessLevel.allCases) { level in
+                Text(level.title).tag(level)
+              }
+            }
           }
-        }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
 
-        Picker("Fitness level", selection: $fitnessLevel) {
-          ForEach(FitnessLevel.allCases) { level in
-            Text(level.title).tag(level)
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Text("Visibility")
+              .font(DS.Typography.section)
+            Picker("Profile", selection: $visibility) {
+              ForEach(ProfileVisibility.allCases) { v in
+                Text(v.title).tag(v)
+              }
+            }
+            .pickerStyle(.segmented)
+            .tint(DS.Palette.accent)
           }
-        }
-      }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
 
-      Section("Visibility") {
-        Picker("Profile", selection: $visibility) {
-          ForEach(ProfileVisibility.allCases) { v in
-            Text(v.title).tag(v)
+          Button {
+            save()
+          } label: {
+            Text("Create profile")
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, DS.Spacing.m)
           }
-        }
-        .pickerStyle(.segmented)
-      }
-
-      Section {
-        Button("Create profile") { save() }
+          .buttonStyle(.borderedProminent)
+          .tint(DS.Palette.accent)
           .disabled(!canSave)
+          .padding(.horizontal, DS.Spacing.xl)
+          .padding(.top, DS.Spacing.s)
+
+          Spacer(minLength: DS.Spacing.xxl)
+        }
       }
     }
-    .navigationTitle("Set up your profile")
+    .dsScreenBackground()
     .onAppear { prefillIfNeeded() }
   }
 

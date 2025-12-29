@@ -13,6 +13,7 @@ final class AppStore {
     static let clans = "habitquest.clans"
     static let clanInvites = "habitquest.clanInvites"
     static let clanBattles = "habitquest.clanBattles"
+    static let habits = "habitquest.habits"
   }
 
   private let encoder = JSONEncoder()
@@ -29,6 +30,8 @@ final class AppStore {
   var clans: [Clan] = []
   var clanInvites: [ClanInvite] = []
   var clanBattles: [ClanBattle] = []
+
+  var habits: [Habit] = []
 
   init(kv: KeyValueStore = UserDefaultsStore()) {
     self.kv = kv
@@ -49,6 +52,7 @@ final class AppStore {
     clans = load([Clan].self, key: Keys.clans) ?? []
     clanInvites = load([ClanInvite].self, key: Keys.clanInvites) ?? []
     clanBattles = load([ClanBattle].self, key: Keys.clanBattles) ?? []
+    habits = load([Habit].self, key: Keys.habits) ?? []
   }
 
   func saveAll() {
@@ -60,6 +64,7 @@ final class AppStore {
     save(clans, key: Keys.clans)
     save(clanInvites, key: Keys.clanInvites)
     save(clanBattles, key: Keys.clanBattles)
+    save(habits, key: Keys.habits)
   }
 
   func signOut() {
@@ -70,6 +75,7 @@ final class AppStore {
     clans = []
     clanInvites = []
     clanBattles = []
+    habits = []
     saveAll()
   }
 
@@ -129,6 +135,68 @@ final class AppStore {
     guard let idx = clanBattles.firstIndex(where: { $0.id == battle.id }) else { return }
     clanBattles[idx] = battle
     saveAll()
+  }
+
+  // MARK: - Habits
+
+  func addHabit(name: String) {
+    let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return }
+    habits.insert(Habit(name: trimmed), at: 0)
+    saveAll()
+  }
+
+  func setHabitActive(_ habitID: String, isActive: Bool) {
+    guard let idx = habits.firstIndex(where: { $0.id == habitID }) else { return }
+    habits[idx].isActive = isActive
+    saveAll()
+  }
+
+  func isHabitCompletedToday(_ habit: Habit, calendar: Calendar = .current, now: Date = Date()) -> Bool {
+    guard let day = habit.lastCompletedDay else { return false }
+    return calendar.isDate(day, inSameDayAs: now)
+  }
+
+  /// Toggles completion for today and updates streak.
+  func toggleCompleteToday(habitID: String, calendar: Calendar = .current, now: Date = Date()) {
+    guard let idx = habits.firstIndex(where: { $0.id == habitID }) else { return }
+    var h = habits[idx]
+
+    let today = calendar.startOfDay(for: now)
+
+    if let last = h.lastCompletedDay, calendar.isDate(last, inSameDayAs: today) {
+      // Uncomplete: revert lastCompletedDay; keep streak conservative (prototype).
+      h.lastCompletedDay = nil
+      h.streakDays = max(0, h.streakDays - 1)
+    } else {
+      // Complete
+      if let last = h.lastCompletedDay {
+        let lastDay = calendar.startOfDay(for: last)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)
+        if let yesterday, calendar.isDate(lastDay, inSameDayAs: yesterday) {
+          h.streakDays += 1
+        } else {
+          h.streakDays = 1
+        }
+      } else {
+        h.streakDays = 1
+      }
+      h.lastCompletedDay = today
+    }
+
+    habits[idx] = h
+    saveAll()
+  }
+
+  var activeHabits: [Habit] {
+    habits.filter { $0.isActive }
+  }
+
+  func todayProgressFraction(calendar: Calendar = .current, now: Date = Date()) -> Double {
+    let active = activeHabits
+    guard !active.isEmpty else { return 0 }
+    let completed = active.filter { isHabitCompletedToday($0, calendar: calendar, now: now) }.count
+    return Double(completed) / Double(active.count)
   }
 
   private func load<T: Decodable>(_ type: T.Type, key: String) -> T? {

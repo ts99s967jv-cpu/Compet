@@ -5,15 +5,21 @@ struct MainTabView: View {
 
   var body: some View {
     TabView {
-      FriendsView(store: store)
-        .tabItem { Label("Friends", systemImage: "person.2") }
+      TodayView(store: store)
+        .tabItem { Label("Today", systemImage: "sun.max") }
 
-      InvitesView(store: store)
-        .tabItem { Label("Games", systemImage: "flag.checkered") }
+      HabitsView(store: store)
+        .tabItem { Label("Habits", systemImage: "checkmark.circle") }
 
-      SettingsView(store: store)
-        .tabItem { Label("Settings", systemImage: "gearshape") }
+      CompetitionsView(store: store)
+        .tabItem { Label("Competitions", systemImage: "trophy") }
+
+      ProfileView(store: store)
+        .tabItem { Label("Profile", systemImage: "person.crop.circle") }
     }
+    .tint(DS.Palette.accent)
+    .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+    .toolbarBackground(.visible, for: .tabBar)
   }
 }
 
