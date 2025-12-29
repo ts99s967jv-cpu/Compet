@@ -323,10 +323,27 @@ extension Habit {
     progressByDayKey = [:]
     slipDayKeys = []
 
-    if let last = try? c.decodeIfPresent(Date.self, forKey: .lastCompletedDay), let last {
+    if let last = (try? c.decodeIfPresent(Date.self, forKey: .lastCompletedDay)) ?? nil {
       let dayKey = Self.dayKey(for: last, calendar: .current)
       completedDayKeys.insert(dayKey)
     }
+  }
+
+  func encode(to encoder: Encoder) throws {
+    var c = encoder.container(keyedBy: CodingKeys.self)
+    try c.encode(id, forKey: .id)
+    try c.encode(kind, forKey: .kind)
+    try c.encodeIfPresent(templateID, forKey: .templateID)
+    try c.encode(name, forKey: .name)
+    try c.encode(description, forKey: .description)
+    try c.encode(behavior, forKey: .behavior)
+    try c.encode(goal, forKey: .goal)
+    try c.encode(visibility, forKey: .visibility)
+    try c.encode(createdAt, forKey: .createdAt)
+    try c.encode(isActive, forKey: .isActive)
+    try c.encode(completedDayKeys, forKey: .completedDayKeys)
+    try c.encode(progressByDayKey, forKey: .progressByDayKey)
+    try c.encode(slipDayKeys, forKey: .slipDayKeys)
   }
 
   static func dayKey(for date: Date, calendar: Calendar) -> String {
