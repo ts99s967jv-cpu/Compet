@@ -134,7 +134,7 @@ struct CompetitionsView: View {
         CompetitionCard(
           id: "invite:\(invite.id)",
           name: invite.title,
-          metric: invite.settings.activity.title,
+          metric: invite.settings.scoringSummary,
           leaderName: leader,
           yourRank: 2,
           isLeaderYou: false
@@ -148,7 +148,7 @@ struct CompetitionsView: View {
         CompetitionCard(
           id: "clan:\(battle.id)",
           name: battle.title,
-          metric: battle.settings.activity.title,
+          metric: battle.settings.scoringSummary,
           leaderName: leaderClan,
           yourRank: 1,
           isLeaderYou: false
@@ -172,7 +172,11 @@ struct CompetitionsView: View {
         title: "Weekend Steps Open",
         createdAt: .now,
         createdBy: other,
-        settings: GameSettings.default(mode: .groupFriends),
+        settings: {
+          var s = GameSettings.default(mode: .groupFriends)
+          s.scoringMetrics = [.steps, .activeEnergyBurned]
+          return s
+        }(),
         status: .open,
         maxPlayers: 10,
         players: [PublicGamePlayer(user: other, joinedAt: .now)]
@@ -185,6 +189,7 @@ struct CompetitionsView: View {
         settings: {
           var s = GameSettings.default(mode: .groupFriends)
           s.activity = .cycling
+          s.scoringMetrics = [.activeEnergyBurned, .sleepScore]
           s.timeLimitDays = 3
           return s
         }(),
@@ -277,13 +282,13 @@ private struct PublicGameCard: View {
           .lineLimit(2)
 
         HStack {
-          Text("Host: \(game.createdBy.displayName)")
+          Text("Score: \(game.settings.scoringSummary)")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
           Spacer()
-          Text("Open")
+          Text("Host: \(game.createdBy.displayName)")
             .font(DS.Typography.caption.weight(.semibold))
-            .foregroundStyle(DS.Palette.accent)
+            .foregroundStyle(DS.Palette.subtext(scheme))
         }
       }
       .dsCard()
@@ -347,6 +352,8 @@ private struct ActiveGameDetailSheet: View {
   let gameID: String
 
   private var game: ActiveGame? { store.activeGames.first(where: { $0.id == gameID }) }
+  @State private var myHealthPoints: Double?
+  @State private var healthStatusText: String?
 
   var body: some View {
     NavigationStack {
@@ -379,7 +386,7 @@ private struct ActiveGameDetailSheet: View {
             .padding(.horizontal, DS.Spacing.xl)
 
             VStack(alignment: .leading, spacing: DS.Spacing.s) {
-              Text("Leaderboard (prototype points)")
+              Text("Leaderboard")
                 .font(DS.Typography.section)
 
               let svc = ActiveGamesService(store: store)
@@ -398,14 +405,24 @@ private struct ActiveGameDetailSheet: View {
                   Text(row.0.displayName)
                     .font(DS.Typography.body.weight(.semibold))
                   Spacer()
-                  Text("\(row.1)")
-                    .font(DS.Typography.body.weight(.semibold))
-                    .monospacedDigit()
+                  if let meID = store.profile?.id, row.0.id == meID, let myHealthPoints {
+                    Text("\(Int(myHealthPoints.rounded()))")
+                      .font(DS.Typography.body.weight(.semibold))
+                      .monospacedDigit()
+                  } else {
+                    Text("\(row.1)")
+                      .font(DS.Typography.body.weight(.semibold))
+                      .monospacedDigit()
+                  }
                 }
                 if idx != rows.count - 1 {
                   Divider().overlay(DS.Palette.separator(scheme))
                 }
               }
+
+              Text(healthStatusText ?? "Your points use Apple Health: \(game.settings.scoringSummary). (Others are placeholder until scores sync.)")
+                .font(DS.Typography.caption)
+                .foregroundStyle(DS.Palette.subtext(scheme))
             }
             .dsCard()
             .padding(.horizontal, DS.Spacing.xl)
@@ -451,6 +468,26 @@ private struct ActiveGameDetailSheet: View {
         }
       }
     }
+    .task { await loadMyHealthPoints() }
+  }
+
+  private func loadMyHealthPoints() async {
+    guard let game, let elim = game.elimination else { return }
+    guard let meID = store.profile?.id else { return }
+    guard game.players.contains(where: { $0.id == meID }) else { return }
+
+    let hk = HealthKitScoringService()
+    let start = elim.roundStartedAt
+    let end = Date()
+
+    do {
+      try await hk.requestAuthorization(for: game.settings.scoringMetrics)
+      let pts = try await hk.points(metrics: game.settings.scoringMetrics, start: start, end: end)
+      myHealthPoints = pts
+      healthStatusText = "Your points (Apple Health): \(Int(pts.rounded())) • \(game.settings.scoringSummary)"
+    } catch {
+      healthStatusText = "Apple Health points unavailable (enable Health permissions)."
+    }
   }
 }
 
@@ -474,7 +511,7 @@ private struct PublicGameDetailSheet: View {
               Text(game.title)
                 .font(DS.Typography.title)
 
-              Text("\(game.settings.activity.title) • \(game.settings.timeLimitDays)d • \(game.settings.winCondition.title)")
+              Text("\(game.settings.activity.title) • \(game.settings.timeLimitDays)d • \(game.settings.winCondition.title) • Score: \(game.settings.scoringSummary)")
                 .font(DS.Typography.body)
                 .foregroundStyle(DS.Palette.subtext(scheme))
             }
@@ -508,6 +545,23 @@ private struct PublicGameDetailSheet: View {
 
             let meID = store.profile?.id
             let isIn = meID.map { game.contains(userID: $0) } ?? false
+            let isOwner = (store.profile?.id == game.createdBy.id)
+            let canStartNow = isOwner && game.status == .open && game.players.count >= 2
+
+            if canStartNow {
+              Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                  PublicGamesService(store: store).startNow(gameID: game.id)
+                }
+              } label: {
+                Text("Start now")
+                  .frame(maxWidth: .infinity)
+                  .padding(.vertical, DS.Spacing.m)
+              }
+              .buttonStyle(.borderedProminent)
+              .tint(DS.Palette.accent)
+              .padding(.horizontal, DS.Spacing.xl)
+            }
 
             Button {
               withAnimation(.easeInOut(duration: 0.25)) {

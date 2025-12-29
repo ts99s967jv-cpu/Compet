@@ -27,6 +27,7 @@ Because this workspace runs on Linux, the code is provided as a clean SwiftUI co
    - Add capability **Push Notifications** is **not required** (we use local notifications), but **Background Modes** are optional if you later want background refresh
 5. Add these to your app’s `Info.plist`:
    - `NSHealthShareUsageDescription` = "HabitQuest uses Apple Health data for challenges."
+   - `NSHealthUpdateUsageDescription` (optional) = "HabitQuest can write optional workout summaries."
    - `NSUserNotificationUsageDescription` (optional; iOS typically prompts without this, but having a message is helpful)
 6. Build & run on a device (HealthKit requires a real device).
 

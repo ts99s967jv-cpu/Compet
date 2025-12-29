@@ -69,6 +69,9 @@ enum GameWinCondition: String, Codable, CaseIterable, Identifiable {
 struct GameSettings: Codable, Equatable, Hashable {
   var mode: GameModeKind
   var activity: GameActivity
+  /// Metrics included in the points total (e.g. steps + calories burned).
+  /// This is the "custom rule" used for scoring.
+  var scoringMetrics: [ScoreMetric]
   /// Competition length in days.
   var timeLimitDays: Int
   var winCondition: GameWinCondition
@@ -83,12 +86,20 @@ struct GameSettings: Codable, Equatable, Hashable {
     GameSettings(
       mode: mode,
       activity: .steps,
+      scoringMetrics: [.steps],
       timeLimitDays: 7,
       winCondition: .mostPointsAtEnd,
       levelVsLevelStartingTarget: 10_000,
       enabledPowerUps: [],
       customRulesNote: ""
     )
+  }
+}
+
+extension GameSettings {
+  var scoringSummary: String {
+    if scoringMetrics.isEmpty { return "Points" }
+    return scoringMetrics.map(\.shortTitle).joined(separator: " + ")
   }
 }
 

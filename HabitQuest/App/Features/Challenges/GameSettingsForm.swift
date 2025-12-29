@@ -22,6 +22,31 @@ struct GameSettingsForm: View {
       }
     }
 
+    Section("Scoring (Health)") {
+      ForEach(ScoreMetric.allCases) { metric in
+        Toggle(isOn: Binding(
+          get: { settings.scoringMetrics.contains(metric) },
+          set: { isOn in
+            if isOn {
+              if !settings.scoringMetrics.contains(metric) { settings.scoringMetrics.append(metric) }
+            } else {
+              settings.scoringMetrics.removeAll { $0 == metric }
+              if settings.scoringMetrics.isEmpty {
+                // Keep at least one metric selected.
+                settings.scoringMetrics = [.steps]
+              }
+            }
+          }
+        )) {
+          Text(metric.title)
+        }
+      }
+
+      Text("Each player’s points are calculated from their own Apple Health data. Comparing players requires syncing scores across devices (backend).")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+    }
+
     Section("Time limit") {
       Stepper(value: $settings.timeLimitDays, in: 1...90) {
         HStack {

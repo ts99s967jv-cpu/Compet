@@ -60,5 +60,37 @@ final class PublicGamesService {
     }
     store.updatePublicGame(game)
   }
+
+  /// Allows the lobby owner to start early (useful if the lobby isn't filling).
+  func startNow(gameID: String) {
+    guard let me = store.profile?.asPublicUser() else { return }
+    guard var game = store.publicGames.first(where: { $0.id == gameID }) else { return }
+    guard game.status == .open else { return }
+    guard game.createdBy.id == me.id else { return }
+    guard game.players.count >= 2 else { return }
+
+    game.status = .started
+    store.updatePublicGame(game)
+
+    if game.settings.winCondition == .eliminationLastManStanding {
+      ActiveGamesService(store: store).startEliminationGame(from: game)
+    }
+  }
+
+  /// Allows the lobby owner to start before the lobby is full.
+  func startNow(gameID: String) {
+    guard let me = store.profile?.asPublicUser() else { return }
+    guard var game = store.publicGames.first(where: { $0.id == gameID }) else { return }
+    guard game.status == .open else { return }
+    guard game.createdBy.id == me.id else { return }
+    guard game.players.count >= 2 else { return }
+
+    game.status = .started
+    store.updatePublicGame(game)
+
+    if game.settings.winCondition == .eliminationLastManStanding {
+      ActiveGamesService(store: store).startEliminationGame(from: game)
+    }
+  }
 }
 
