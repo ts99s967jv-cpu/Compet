@@ -89,6 +89,9 @@ final class HealthKitScoringService {
     let pred = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
     let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
 
+    let hkStore = store
+    let filter = sourceFilter
+
     return try await withCheckedThrowingContinuation { cont in
       let q = HKSampleQuery(sampleType: type, predicate: pred, limit: HKObjectQueryNoLimit, sortDescriptors: [sort]) { _, samples, error in
         if let error { cont.resume(throwing: error); return }
@@ -99,16 +102,16 @@ final class HealthKitScoringService {
 
         var sum: Double = 0
         for s in samples {
-          if sourceFilter == .iPhoneOnly, !self.isIPhoneSample(s) { continue }
+          if filter == .iPhoneOnly, !Self.isIPhoneSample(s) { continue }
           sum += s.quantity.doubleValue(for: unit)
         }
         cont.resume(returning: sum)
       }
-      store.execute(q)
+      hkStore.execute(q)
     }
   }
 
-  private func isIPhoneSample(_ sample: HKSample) -> Bool {
+  private static func isIPhoneSample(_ sample: HKSample) -> Bool {
     // We treat "phone-only" as "recorded by iPhone hardware", excluding watch/other.
     guard let device = sample.device else { return false }
     let model = (device.model ?? "").lowercased()

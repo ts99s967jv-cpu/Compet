@@ -27,6 +27,14 @@ extension Account {
     createdAt = try c.decode(Date.self, forKey: .createdAt)
   }
 
+  func encode(to encoder: Encoder) throws {
+    var c = encoder.container(keyedBy: CodingKeys.self)
+    try c.encode(userID, forKey: .userID)
+    try c.encode(email, forKey: .email)
+    try c.encode(username, forKey: .username)
+    try c.encode(createdAt, forKey: .createdAt)
+  }
+
   private enum CodingKeys: String, CodingKey {
     case userID, email, username, createdAt
     case appleUserID
