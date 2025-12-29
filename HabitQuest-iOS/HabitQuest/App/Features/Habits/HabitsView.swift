@@ -112,7 +112,7 @@ private struct HabitGridCard: View {
           .contentTransition(.symbolEffect(.replace))
       }
 
-      if case .target(_, let unit, let period, let target) = habit.goal {
+      if case .target(_, let unit, _, let target) = habit.goal {
         let progress = store.habitProgressInCurrentPeriod(habit) ?? 0
         Text("\(format(progress)) / \(format(target)) \(unit)")
           .font(DS.Typography.caption)
