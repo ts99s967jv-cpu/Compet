@@ -14,6 +14,7 @@ final class AppStore {
     static let clanInvites = "habitquest.clanInvites"
     static let clanBattles = "habitquest.clanBattles"
     static let habits = "habitquest.habits"
+    static let publicGames = "habitquest.publicGames"
   }
 
   private let encoder = JSONEncoder()
@@ -32,6 +33,7 @@ final class AppStore {
   var clanBattles: [ClanBattle] = []
 
   var habits: [Habit] = []
+  var publicGames: [PublicGame] = []
 
   init(kv: KeyValueStore = UserDefaultsStore()) {
     self.kv = kv
@@ -53,6 +55,7 @@ final class AppStore {
     clanInvites = load([ClanInvite].self, key: Keys.clanInvites) ?? []
     clanBattles = load([ClanBattle].self, key: Keys.clanBattles) ?? []
     habits = load([Habit].self, key: Keys.habits) ?? []
+    publicGames = load([PublicGame].self, key: Keys.publicGames) ?? []
   }
 
   func saveAll() {
@@ -65,6 +68,7 @@ final class AppStore {
     save(clanInvites, key: Keys.clanInvites)
     save(clanBattles, key: Keys.clanBattles)
     save(habits, key: Keys.habits)
+    save(publicGames, key: Keys.publicGames)
   }
 
   func signOut() {
@@ -76,6 +80,7 @@ final class AppStore {
     clanInvites = []
     clanBattles = []
     habits = []
+    publicGames = []
     saveAll()
   }
 
@@ -197,6 +202,24 @@ final class AppStore {
     guard !active.isEmpty else { return 0 }
     let completed = active.filter { isHabitCompletedToday($0, calendar: calendar, now: now) }.count
     return Double(completed) / Double(active.count)
+  }
+
+  // MARK: - Public games
+
+  func addPublicGame(_ game: PublicGame) {
+    publicGames.insert(game, at: 0)
+    saveAll()
+  }
+
+  func updatePublicGame(_ game: PublicGame) {
+    guard let idx = publicGames.firstIndex(where: { $0.id == game.id }) else { return }
+    publicGames[idx] = game
+    saveAll()
+  }
+
+  func removePublicGame(gameID: String) {
+    publicGames.removeAll { $0.id == gameID }
+    saveAll()
   }
 
   private func load<T: Decodable>(_ type: T.Type, key: String) -> T? {
