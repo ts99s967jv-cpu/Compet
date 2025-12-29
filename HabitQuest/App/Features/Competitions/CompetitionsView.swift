@@ -362,7 +362,10 @@ private struct ActiveGameCard: View {
           .foregroundStyle(DS.Palette.subtext(scheme))
           .lineLimit(2)
 
-        if game.settings.winCondition == .eliminationLastManStanding, let elim = game.elimination {
+        if (game.settings.winCondition == .eliminationLastManStanding
+            || game.settings.winCondition == .kingOfMonth
+            || game.settings.winCondition == .kingOfYear),
+           let elim = game.elimination {
           HStack {
             Text("Players: \(remainingCount(game, elim))")
               .font(DS.Typography.caption)
@@ -409,8 +412,7 @@ private struct ActiveGameDetailSheet: View {
             VStack(alignment: .leading, spacing: DS.Spacing.s) {
               Text(game.title)
                 .font(DS.Typography.title)
-              Text(game.settings.winCondition == .eliminationLastManStanding ? "Elimination • Bottom player removed daily" :
-                    (game.settings.winCondition == .kingOfMonth ? "King of the Month • Bottom removed weekly (until month end)" : "King of the Year • Bottom removed monthly (until year end)"))
+              Text(subtitle(for: game))
                 .font(DS.Typography.body)
                 .foregroundStyle(DS.Palette.subtext(scheme))
             }
@@ -418,31 +420,53 @@ private struct ActiveGameDetailSheet: View {
             .padding(.top, DS.Spacing.l)
 
             VStack(alignment: .leading, spacing: DS.Spacing.s) {
-              Text("Current round")
+              Text("Schedule")
                 .font(DS.Typography.section)
-              Text("Round \(elim.roundIndex + 1)")
+              if game.settings.winCondition == .kingOfMonth || game.settings.winCondition == .kingOfYear {
+                Text("Season: \(game.createdAt.formatted(date: .abbreviated, time: .omitted)) → \((elim.endsAt ?? .now).formatted(date: .abbreviated, time: .omitted))")
+                  .font(DS.Typography.caption)
+                  .foregroundStyle(DS.Palette.subtext(scheme))
+              }
+
+              Text("Round \(elim.roundIndex + 1) • \(elim.cadence.title) elimination")
                 .font(DS.Typography.caption)
                 .foregroundStyle(DS.Palette.subtext(scheme))
 
-              let cutoff = nextCutoff(from: elim.roundStartedAt, cadence: elim.cadence) ?? .now
+              let svc = ActiveGamesService(store: store)
+              let cutoff = svc.nextEliminationDate(for: elim) ?? .now
               Text("Next elimination: \(cutoff.formatted(date: .abbreviated, time: .shortened))")
                 .font(DS.Typography.caption)
                 .foregroundStyle(DS.Palette.subtext(scheme))
+
+              let projected = svc.projectedEliminationsThisRound(game: game)
+              if projected > 0 {
+                Text("Elimination zone: bottom \(projected) player\(projected == 1 ? "" : "s")")
+                  .font(DS.Typography.caption)
+                  .foregroundStyle(DS.Palette.subtext(scheme))
+              }
             }
             .dsCard()
             .padding(.horizontal, DS.Spacing.xl)
 
             VStack(alignment: .leading, spacing: DS.Spacing.s) {
-              Text("Leaderboard")
+              Text("Scoreboard")
                 .font(DS.Typography.section)
 
               let svc = ActiveGamesService(store: store)
               let remaining = game.players.filter { !elim.eliminatedUserIDs.contains($0.id) }
-              let rows = remaining
+              let rowsDesc = remaining
                 .map { ($0, svc.pointsFor(userID: $0.id, roundIndex: elim.roundIndex, seed: elim.roundStartedAt)) }
                 .sorted { $0.1 > $1.1 }
 
-              ForEach(Array(rows.enumerated()), id: \.offset) { idx, row in
+              let projected = svc.projectedEliminationsThisRound(game: game)
+              let eliminationZoneIDs: Set<String> = Set(
+                rowsDesc
+                  .suffix(max(0, min(projected, rowsDesc.count)))
+                  .map { $0.0.id }
+              )
+
+              ForEach(Array(rowsDesc.enumerated()), id: \.offset) { idx, row in
+                let isInZone = eliminationZoneIDs.contains(row.0.id)
                 HStack {
                   Text("#\(idx + 1)")
                     .font(DS.Typography.caption)
@@ -462,7 +486,8 @@ private struct ActiveGameDetailSheet: View {
                       .monospacedDigit()
                   }
                 }
-                if idx != rows.count - 1 {
+                .foregroundStyle(isInZone ? DS.Palette.danger : DS.Palette.text(scheme))
+                if idx != rowsDesc.count - 1 {
                   Divider().overlay(DS.Palette.separator(scheme))
                 }
               }
@@ -470,6 +495,12 @@ private struct ActiveGameDetailSheet: View {
               Text(healthStatusText ?? "Your points use Apple Health: \(game.settings.scoringSummary). (Others are placeholder until scores sync.)")
                 .font(DS.Typography.caption)
                 .foregroundStyle(DS.Palette.subtext(scheme))
+
+              if let meID = store.profile?.id, eliminationZoneIDs.contains(meID) {
+                Text("You’re currently in the elimination zone. Increase your points before the cutoff.")
+                  .font(DS.Typography.caption.weight(.semibold))
+                  .foregroundStyle(DS.Palette.danger)
+              }
             }
             .dsCard()
             .padding(.horizontal, DS.Spacing.xl)
@@ -493,7 +524,7 @@ private struct ActiveGameDetailSheet: View {
                 ActiveGamesService(store: store).simulateEndOfRound(gameID: gameID)
               }
             } label: {
-              Text("Simulate 24h elimination (prototype)")
+              Text("Simulate next elimination (prototype)")
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, DS.Spacing.m)
             }
@@ -527,6 +558,19 @@ private struct ActiveGameDetailSheet: View {
       return cal.date(byAdding: .day, value: 7, to: start)
     case .monthly:
       return cal.date(byAdding: .month, value: 1, to: start)
+    }
+  }
+
+  private func subtitle(for game: ActiveGame) -> String {
+    switch game.settings.winCondition {
+    case .eliminationLastManStanding:
+      return "Elimination • Bottom removed daily"
+    case .kingOfMonth:
+      return "King of the Month • Bottom removed weekly • Join anytime"
+    case .kingOfYear:
+      return "King of the Year • Bottom removed monthly • Join anytime"
+    default:
+      return "Competition"
     }
   }
 

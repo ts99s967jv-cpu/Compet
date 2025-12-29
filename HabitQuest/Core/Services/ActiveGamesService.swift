@@ -203,6 +203,20 @@ final class ActiveGamesService {
     return max(1, Int(ceil(Double(needEliminations) / Double(eventsLeftIncludingThis))))
   }
 
+  // MARK: - UI helpers (projection)
+
+  func nextEliminationDate(for elim: EliminationState) -> Date? {
+    nextCutoff(from: elim.roundStartedAt, cadence: elim.cadence)
+  }
+
+  func projectedEliminationsThisRound(game: ActiveGame, now: Date = Date()) -> Int {
+    guard let elim = game.elimination else { return 0 }
+    let remainingCount = game.players.filter { !elim.eliminatedUserIDs.contains($0.id) }.count
+    guard remainingCount > 1 else { return 0 }
+    guard let cutoff = nextCutoff(from: elim.roundStartedAt, cadence: elim.cadence) else { return 1 }
+    return eliminationCountThisRound(remainingCount: remainingCount, afterCutoff: cutoff, cadence: elim.cadence, endsAt: elim.endsAt)
+  }
+
   // MARK: - System events / late join helpers
 
   func upsertSystemSeasonGame(publicGame: PublicGame, seasonStart: Date, seasonEnd: Date, now: Date = Date()) {
