@@ -16,6 +16,7 @@ final class AppStore {
     static let habits = "habitquest.habits"
     static let publicGames = "habitquest.publicGames"
     static let activeGames = "habitquest.activeGames"
+    static let gameScores = "habitquest.gameScores"
   }
 
   private let encoder = JSONEncoder()
@@ -36,6 +37,7 @@ final class AppStore {
   var habits: [Habit] = []
   var publicGames: [PublicGame] = []
   var activeGames: [ActiveGame] = []
+  var gameScores: [GameScore] = []
 
   /// Ephemeral (not persisted) HealthKit-derived progress, keyed by habitID -> dayKey -> value.
   /// Used for auto-tracked habits like Steps so users don’t manually input Health data.
@@ -63,6 +65,7 @@ final class AppStore {
     habits = load([Habit].self, key: Keys.habits) ?? []
     publicGames = load([PublicGame].self, key: Keys.publicGames) ?? []
     activeGames = load([ActiveGame].self, key: Keys.activeGames) ?? []
+    gameScores = load([GameScore].self, key: Keys.gameScores) ?? []
   }
 
   func saveAll() {
@@ -77,6 +80,7 @@ final class AppStore {
     save(habits, key: Keys.habits)
     save(publicGames, key: Keys.publicGames)
     save(activeGames, key: Keys.activeGames)
+    save(gameScores, key: Keys.gameScores)
   }
 
   func signOut() {
@@ -90,6 +94,27 @@ final class AppStore {
     habits = []
     publicGames = []
     activeGames = []
+    gameScores = []
+    saveAll()
+  }
+
+  // MARK: - Game scores (leaderboards)
+
+  func upsertGameScore(_ score: GameScore) {
+    if let idx = gameScores.firstIndex(where: { $0.id == score.id }) {
+      gameScores[idx] = score
+    } else {
+      gameScores.insert(score, at: 0)
+    }
+    saveAll()
+  }
+
+  func gameScore(activeGameID: String, roundIndex: Int, userID: String) -> GameScore? {
+    gameScores.first(where: { $0.activeGameID == activeGameID && $0.roundIndex == roundIndex && $0.userID == userID })
+  }
+
+  func setGameScores(_ scores: [GameScore]) {
+    gameScores = scores
     saveAll()
   }
 

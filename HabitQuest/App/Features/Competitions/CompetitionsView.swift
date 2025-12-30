@@ -12,6 +12,7 @@ struct CompetitionsView: View {
   @State private var filterWinCondition: GameWinCondition? = nil
   @State private var filterMetric: ScoreMetric? = nil
   @State private var hideFull: Bool = false
+  @State private var isSyncingScores: Bool = false
 
   var body: some View {
     NavigationStack {
@@ -226,6 +227,17 @@ struct CompetitionsView: View {
         SystemEventsService(store: store).sync()
         seedPublicGamesIfNeeded()
         ActiveGamesService(store: store).tick()
+      }
+      .task {
+        // Lightweight auto-sync: refresh my scores periodically while this screen is visible.
+        while !Task.isCancelled {
+          if !isSyncingScores {
+            isSyncingScores = true
+            await GameScoreSyncService(store: store).syncMyActiveGamesOnce()
+            isSyncingScores = false
+          }
+          try? await Task.sleep(nanoseconds: 60_000_000_000)
+        }
       }
     }
   }
@@ -583,6 +595,78 @@ private struct PublicGameDetailSheet: View {
             let isOwner = (store.profile?.id == game.createdBy.id)
             let canStartNow = (game.visibility != .systemEvent) && isOwner && game.status == .open && game.players.count >= 2
             let eligible = store.profile.map { isEligible(profile: $0, game: game) } ?? true
+
+            // System event leaderboard (elimination-style), visible to anyone.
+            if game.visibility == .systemEvent,
+               let active = store.activeGames.first(where: { $0.id == "ag_" + game.id }),
+               let elim = active.elimination {
+              VStack(alignment: .leading, spacing: DS.Spacing.s) {
+                Text("Event status")
+                  .font(DS.Typography.section)
+
+                let svc = ActiveGamesService(store: store)
+                let cutoff = svc.nextEliminationDate(for: elim) ?? .now
+                Text("Next round: \(cutoff.formatted(date: .abbreviated, time: .shortened))")
+                  .font(DS.Typography.caption)
+                  .foregroundStyle(DS.Palette.subtext(scheme))
+
+                let projected = svc.projectedEliminationsThisRound(game: active)
+                Text("Elimination zone: bottom \(projected) player\(projected == 1 ? "" : "s")")
+                  .font(DS.Typography.caption)
+                  .foregroundStyle(DS.Palette.subtext(scheme))
+
+                Divider().overlay(DS.Palette.separator(scheme))
+
+                Text("Scoreboard")
+                  .font(DS.Typography.section)
+
+                let remaining = active.players.filter { !elim.eliminatedUserIDs.contains($0.id) }
+                let rowsDesc = remaining
+                  .map { ($0, svc.leaderboardPointsFor(activeGameID: active.id, userID: $0.id, roundIndex: elim.roundIndex, seed: elim.roundStartedAt)) }
+                  .sorted { $0.1 > $1.1 }
+
+                let eliminationZoneIDs: Set<String> = Set(
+                  rowsDesc
+                    .suffix(max(0, min(projected, rowsDesc.count)))
+                    .map { $0.0.id }
+                )
+
+                ForEach(Array(rowsDesc.enumerated()), id: \.offset) { idx, row in
+                  let isInZone = eliminationZoneIDs.contains(row.0.id)
+                  HStack {
+                    Text("#\(idx + 1)")
+                      .font(DS.Typography.caption)
+                      .foregroundStyle(DS.Palette.subtext(scheme))
+                      .frame(width: 28, alignment: .leading)
+                      .monospacedDigit()
+                    Text(row.0.displayName)
+                      .font(DS.Typography.body.weight(.semibold))
+                    Spacer()
+                    Text("\(row.1)")
+                      .font(DS.Typography.body.weight(.semibold))
+                      .monospacedDigit()
+                  }
+                  .foregroundStyle(isInZone ? DS.Palette.danger : DS.Palette.text(scheme))
+                  if idx != rowsDesc.count - 1 {
+                    Divider().overlay(DS.Palette.separator(scheme))
+                  }
+                }
+
+                if let meID, isIn, eliminationZoneIDs.contains(meID) {
+                  Text("You’re currently in the elimination zone. Increase your steps before the next round.")
+                    .font(DS.Typography.caption.weight(.semibold))
+                    .foregroundStyle(DS.Palette.danger)
+                }
+              }
+              .dsCard()
+              .padding(.horizontal, DS.Spacing.xl)
+              .task {
+                // Keep my score synced while viewing this event.
+                if let active = store.activeGames.first(where: { $0.id == "ag_" + game.id }) {
+                  await GameScoreSyncService(store: store).syncMyScore(for: active)
+                }
+              }
+            }
 
             if canStartNow {
               Button {

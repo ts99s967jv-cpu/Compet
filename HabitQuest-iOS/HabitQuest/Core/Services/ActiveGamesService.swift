@@ -118,8 +118,17 @@ final class ActiveGamesService {
     tick(now: now)
   }
 
-  func pointsFor(userID: String, roundIndex: Int, seed: Date) -> Int {
-    // Deterministic pseudo-score for a round. Replace with real scoring later.
+  /// Leaderboard points for UI: prefers persisted HealthKit-synced points for the given user/round.
+  /// Falls back to a deterministic placeholder until real multi-user sync exists.
+  func leaderboardPointsFor(activeGameID: String, userID: String, roundIndex: Int, seed: Date) -> Int {
+    if let score = store.gameScore(activeGameID: activeGameID, roundIndex: roundIndex, userID: userID) {
+      return score.points
+    }
+    return pseudoPointsFor(userID: userID, roundIndex: roundIndex, seed: seed)
+  }
+
+  /// Deterministic pseudo-score for a round. Replace with real scoring later.
+  private func pseudoPointsFor(userID: String, roundIndex: Int, seed: Date) -> Int {
     let s = "\(userID)|\(roundIndex)|\(seed.timeIntervalSince1970)"
     var h: UInt64 = 1469598103934665603
     for b in s.utf8 {
@@ -178,7 +187,7 @@ final class ActiveGamesService {
 
   private func rankAscending(users: [PublicUser], roundIndex: Int, seed: Date) -> [PublicUser] {
     users
-      .map { user in (user, pointsFor(userID: user.id, roundIndex: roundIndex, seed: seed)) }
+      .map { user in (user, pseudoPointsFor(userID: user.id, roundIndex: roundIndex, seed: seed)) }
       .sorted { lhs, rhs in
         if lhs.1 != rhs.1 { return lhs.1 < rhs.1 }
         return lhs.0.id < rhs.0.id

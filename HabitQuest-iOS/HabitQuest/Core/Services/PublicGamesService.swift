@@ -61,7 +61,12 @@ final class PublicGamesService {
     // System events must always have an active season game; add the player into it.
     if game.visibility == .systemEvent {
       SystemEventsService(store: store).sync()
-      ActiveGamesService(store: store).addPlayerToActiveGame(activeGameID: "ag_" + game.id, user: me)
+      let activeID = "ag_" + game.id
+      ActiveGamesService(store: store).addPlayerToActiveGame(activeGameID: activeID, user: me)
+      // Immediately sync my score so the leaderboard updates as soon as I join.
+      if let active = store.activeGames.first(where: { $0.id == activeID }) {
+        Task { await GameScoreSyncService(store: store).syncMyScore(for: active) }
+      }
     }
 
     // If this lobby is an elimination-style game and it just started, spawn an ActiveGame.

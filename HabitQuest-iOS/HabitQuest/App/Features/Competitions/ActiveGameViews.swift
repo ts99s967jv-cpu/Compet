@@ -62,8 +62,8 @@ struct ActiveGameDetailSheet: View {
   let gameID: String
 
   private var game: ActiveGame? { store.activeGames.first(where: { $0.id == gameID }) }
-  @State private var myHealthPoints: Double?
-  @State private var healthStatusText: String?
+  @State private var now: Date = Date()
+  @State private var isSyncing: Bool = false
 
   var body: some View {
     NavigationStack {
@@ -103,6 +103,10 @@ struct ActiveGameDetailSheet: View {
                 .font(DS.Typography.caption)
                 .foregroundStyle(DS.Palette.subtext(scheme))
 
+              Text("Time remaining: \(timeRemainingText(to: cutoff, now: now))")
+                .font(DS.Typography.caption.weight(.semibold))
+                .foregroundStyle(DS.Palette.subtext(scheme))
+
               let projected = svc.projectedEliminationsThisRound(game: game)
               if projected > 0 {
                 Text("Elimination zone: bottom \(projected) player\(projected == 1 ? "" : "s")")
@@ -120,7 +124,7 @@ struct ActiveGameDetailSheet: View {
               let svc = ActiveGamesService(store: store)
               let remaining = game.players.filter { !elim.eliminatedUserIDs.contains($0.id) }
               let rowsDesc = remaining
-                .map { ($0, svc.pointsFor(userID: $0.id, roundIndex: elim.roundIndex, seed: elim.roundStartedAt)) }
+                .map { ($0, svc.leaderboardPointsFor(activeGameID: game.id, userID: $0.id, roundIndex: elim.roundIndex, seed: elim.roundStartedAt)) }
                 .sorted { $0.1 > $1.1 }
 
               let projected = svc.projectedEliminationsThisRound(game: game)
@@ -141,15 +145,9 @@ struct ActiveGameDetailSheet: View {
                   Text(row.0.displayName)
                     .font(DS.Typography.body.weight(.semibold))
                   Spacer()
-                  if let meID = store.profile?.id, row.0.id == meID, let myHealthPoints {
-                    Text("\(Int(myHealthPoints.rounded()))")
-                      .font(DS.Typography.body.weight(.semibold))
-                      .monospacedDigit()
-                  } else {
-                    Text("\(row.1)")
-                      .font(DS.Typography.body.weight(.semibold))
-                      .monospacedDigit()
-                  }
+                  Text("\(row.1)")
+                    .font(DS.Typography.body.weight(.semibold))
+                    .monospacedDigit()
                 }
                 .foregroundStyle(isInZone ? DS.Palette.danger : DS.Palette.text(scheme))
                 if idx != rowsDesc.count - 1 {
@@ -157,9 +155,16 @@ struct ActiveGameDetailSheet: View {
                 }
               }
 
-              Text(healthStatusText ?? "Your points use Apple Health: \(game.settings.scoringSummary). (Others are placeholder until scores sync.)")
-                .font(DS.Typography.caption)
-                .foregroundStyle(DS.Palette.subtext(scheme))
+              if let meID = store.profile?.id,
+                 let score = store.gameScore(activeGameID: game.id, roundIndex: elim.roundIndex, userID: meID) {
+                Text("Synced \(score.updatedAt.formatted(date: .abbreviated, time: .shortened)) • \(game.settings.scoringSummary)")
+                  .font(DS.Typography.caption)
+                  .foregroundStyle(DS.Palette.subtext(scheme))
+              } else {
+                Text("Syncing uses Apple Health: \(game.settings.scoringSummary).")
+                  .font(DS.Typography.caption)
+                  .foregroundStyle(DS.Palette.subtext(scheme))
+              }
 
               if let meID = store.profile?.id, eliminationZoneIDs.contains(meID) {
                 Text("You’re currently in the elimination zone. Increase your points before the cutoff.")
@@ -211,7 +216,7 @@ struct ActiveGameDetailSheet: View {
         }
       }
     }
-    .task { await loadMyHealthPoints() }
+    .task { await startAutoSyncLoop() }
   }
 
   private func subtitle(for game: ActiveGame) -> String {
@@ -227,28 +232,32 @@ struct ActiveGameDetailSheet: View {
     }
   }
 
-  private func loadMyHealthPoints() async {
-    guard let game, let elim = game.elimination else { return }
-    guard let meID = store.profile?.id else { return }
-    guard game.players.contains(where: { $0.id == meID }) else { return }
-
-    let hk = HealthKitScoringService()
-    let start = elim.roundStartedAt
-    let end = Date()
-
-    do {
-      try await hk.requestAuthorization(for: game.settings.scoringMetrics)
-      let pts = try await hk.points(
-        metrics: game.settings.scoringMetrics,
-        start: start,
-        end: end,
-        sourceFilter: game.settings.phoneOnlyMetrics ? .iPhoneOnly : .any
-      )
-      myHealthPoints = pts
-      healthStatusText = "Your points (Apple Health): \(Int(pts.rounded())) • \(game.settings.scoringSummary)"
-    } catch {
-      healthStatusText = "Apple Health points unavailable (enable Health permissions)."
+  private func startAutoSyncLoop() async {
+    // Update countdown every second; sync score once per minute.
+    let syncInterval: TimeInterval = 60
+    var lastSync: Date = .distantPast
+    while !Task.isCancelled {
+      now = Date()
+      if now.timeIntervalSince(lastSync) >= syncInterval, let game {
+        lastSync = now
+        if !isSyncing {
+          isSyncing = true
+          await GameScoreSyncService(store: store).syncMyScore(for: game, now: now)
+          isSyncing = false
+        }
+      }
+      try? await Task.sleep(nanoseconds: 1_000_000_000)
     }
+  }
+
+  private func timeRemainingText(to cutoff: Date, now: Date) -> String {
+    let s = max(0, Int(cutoff.timeIntervalSince(now)))
+    let h = s / 3600
+    let m = (s % 3600) / 60
+    let sec = s % 60
+    if h > 0 { return "\(h)h \(m)m" }
+    if m > 0 { return "\(m)m \(sec)s" }
+    return "\(sec)s"
   }
 }
 
