@@ -6,6 +6,7 @@ struct TodayView: View {
 
   @State private var now: Date = Date()
   @State private var logHabit: Habit?
+  @State private var selectedActiveGameID: String?
 
   var body: some View {
     ScrollView {
@@ -14,20 +15,68 @@ struct TodayView: View {
 
         progressCard
 
-        Text("Today’s habits")
-          .dsSectionHeader()
+        let breakHabits = store.activeHabits.filter { $0.behavior == .breakHabit }
+        if !breakHabits.isEmpty {
+          Text("Break habits")
+            .dsSectionHeader()
 
-        VStack(spacing: DS.Spacing.m) {
-          if store.activeHabits.isEmpty {
-            emptyState
-          } else {
-            ForEach(store.activeHabits) { habit in
+          VStack(spacing: DS.Spacing.m) {
+            ForEach(breakHabits) { habit in
               HabitTodayCard(
                 store: store,
                 habit: habit,
                 now: now,
                 logTapped: { logHabit = habit }
               )
+            }
+          }
+          .padding(.horizontal, DS.Spacing.xl)
+        }
+
+        Text("Today’s habits")
+          .dsSectionHeader()
+
+        VStack(spacing: DS.Spacing.m) {
+          let buildHabits = store.activeHabits.filter { $0.behavior != .breakHabit }
+          if store.activeHabits.isEmpty {
+            emptyState
+          } else if buildHabits.isEmpty {
+            Text("You only have break habits right now.")
+              .font(DS.Typography.body)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .dsCard()
+          } else {
+            ForEach(buildHabits) { habit in
+              HabitTodayCard(
+                store: store,
+                habit: habit,
+                now: now,
+                logTapped: { logHabit = habit }
+              )
+            }
+          }
+        }
+        .padding(.horizontal, DS.Spacing.xl)
+
+        Text("Running games")
+          .dsSectionHeader()
+
+        VStack(spacing: DS.Spacing.m) {
+          let running = store.activeGames.filter { $0.status == .active }
+          if running.isEmpty {
+            VStack(alignment: .leading, spacing: DS.Spacing.s) {
+              Text("No active games")
+                .font(DS.Typography.section)
+              Text("Join or start a game from Competitions.")
+                .font(DS.Typography.body)
+                .foregroundStyle(DS.Palette.subtext(scheme))
+            }
+            .dsCard()
+          } else {
+            ForEach(running) { game in
+              ActiveGameCard(game: game) {
+                selectedActiveGameID = game.id
+              }
             }
           }
         }
@@ -54,6 +103,13 @@ struct TodayView: View {
     .sheet(item: $logHabit) { habit in
       HabitLogProgressSheet(store: store, habit: habit)
     }
+    .sheet(item: Binding(
+      get: { selectedActiveGameID.map { IdentifiedID(id: $0) } },
+      set: { selectedActiveGameID = $0?.id }
+    )) { item in
+      ActiveGameDetailSheet(store: store, gameID: item.id)
+    }
+    .task { await refreshStepHabits() }
   }
 
   private var header: some View {
@@ -95,11 +151,30 @@ struct TodayView: View {
     VStack(alignment: .leading, spacing: DS.Spacing.s) {
       Text("No habits yet")
         .font(DS.Typography.section)
-      Text("Add a habit in the Habits tab to start building your streaks.")
+      Text("Add a habit in your Profile to start building your streaks.")
         .font(DS.Typography.body)
         .foregroundStyle(DS.Palette.subtext(scheme))
     }
     .dsCard()
+  }
+
+  private func refreshStepHabits() async {
+    let stepHabits = store.activeHabits.filter {
+      if case .target(let metric, _, _, _) = $0.goal { return metric == .steps }
+      return false
+    }
+    guard !stepHabits.isEmpty else { return }
+
+    do {
+      let hk = HealthKitStepSeriesService()
+      try await hk.requestAuthorization()
+      let points = try await hk.fetchDailySteps(daysBack: 60, now: now)
+      for h in stepHabits {
+        store.setHealthDerivedSeries(habitID: h.id, points: points)
+      }
+    } catch {
+      // Leave derived series empty; UI will show 0.
+    }
   }
 }
 
@@ -217,19 +292,32 @@ private struct HabitTodayCard: View {
       .buttonStyle(.plain)
 
     case .target:
-      Button {
-        logTapped()
-      } label: {
+      if case .target(let metric, _, _, _) = habit.goal, metric == .steps {
+        // Auto-tracked from HealthKit
         ZStack {
           Circle()
-            .fill(DS.Palette.accent.opacity(0.18))
+            .fill(DS.Palette.accent.opacity(0.12))
             .frame(width: 42, height: 42)
-          Image(systemName: "plus")
+          Image(systemName: "waveform.path.ecg")
             .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(DS.Palette.accent)
+            .foregroundStyle(DS.Palette.accent.opacity(0.9))
         }
+        .accessibilityLabel("Tracked automatically")
+      } else {
+        Button {
+          logTapped()
+        } label: {
+          ZStack {
+            Circle()
+              .fill(DS.Palette.accent.opacity(0.18))
+              .frame(width: 42, height: 42)
+            Image(systemName: "plus")
+              .font(.system(size: 16, weight: .semibold))
+              .foregroundStyle(DS.Palette.accent)
+          }
+        }
+        .buttonStyle(.plain)
       }
-      .buttonStyle(.plain)
     }
   }
 

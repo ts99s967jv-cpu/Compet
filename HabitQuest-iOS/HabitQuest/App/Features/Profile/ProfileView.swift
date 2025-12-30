@@ -15,6 +15,9 @@ struct ProfileView: View {
           .padding(.horizontal, DS.Spacing.xl)
           .padding(.top, DS.Spacing.l)
 
+        ProfileHabitsSection(store: store)
+          .padding(.horizontal, DS.Spacing.xl)
+
         Text("Health stats")
           .dsSectionHeader()
 
@@ -234,7 +237,17 @@ struct ProfileView: View {
     do {
       let hk = HealthKitTrendsService()
       try await hk.requestAuthorization()
-      trends = try await hk.fetch(daysBack: 365)
+      let snap = try await hk.fetch(daysBack: 365)
+      trends = snap
+
+      // Feed step-based habits with HealthKit series (auto-tracked).
+      let stepHabits = store.activeHabits.filter {
+        if case .target(let metric, _, _, _) = $0.goal { return metric == .steps }
+        return false
+      }
+      for h in stepHabits {
+        store.setHealthDerivedSeries(habitID: h.id, points: snap.steps)
+      }
     } catch {
       // If HealthKit isn't available/authorized, show zeros.
       trends = HealthTrendsSnapshot()

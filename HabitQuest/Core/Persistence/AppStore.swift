@@ -37,6 +37,10 @@ final class AppStore {
   var publicGames: [PublicGame] = []
   var activeGames: [ActiveGame] = []
 
+  /// Ephemeral (not persisted) HealthKit-derived progress, keyed by habitID -> dayKey -> value.
+  /// Used for auto-tracked habits like Steps so users don’t manually input Health data.
+  var healthDerivedProgressByHabitID: [String: [String: Double]] = [:]
+
   init(kv: KeyValueStore = UserDefaultsStore()) {
     self.kv = kv
     decoder.dateDecodingStrategy = .iso8601
@@ -208,6 +212,9 @@ final class AppStore {
 
   func habitProgressToday(_ habit: Habit, calendar: Calendar = .current, now: Date = Date()) -> Double {
     let key = dayKey(for: now, calendar: calendar)
+    if let derived = healthDerivedProgressByHabitID[habit.id]?[key] {
+      return derived
+    }
     return habit.progressByDayKey[key] ?? 0
   }
 
@@ -221,7 +228,12 @@ final class AppStore {
         return habitProgressToday(habit, calendar: calendar, now: now)
       case .week:
         let keys = weekDayKeys(containing: now, calendar: calendar)
-        return keys.reduce(0.0) { $0 + (habit.progressByDayKey[$1] ?? 0) }
+        return keys.reduce(0.0) { sum, k in
+          if let derived = healthDerivedProgressByHabitID[habit.id]?[k] {
+            return sum + derived
+          }
+          return sum + (habit.progressByDayKey[k] ?? 0)
+        }
       }
     }
   }
@@ -255,6 +267,11 @@ final class AppStore {
   func addProgressToday(habitID: String, amount: Double, calendar: Calendar = .current, now: Date = Date()) {
     guard let idx = habits.firstIndex(where: { $0.id == habitID }) else { return }
     var h = habits[idx]
+    if case .target(let metric, _, let period, _) = h.goal,
+       metric == .steps, period == .day {
+      // Steps are auto-tracked from HealthKit (no manual input).
+      return
+    }
     let key = dayKey(for: now, calendar: calendar)
     let current = h.progressByDayKey[key] ?? 0
     h.progressByDayKey[key] = max(0, current + amount)
@@ -290,14 +307,27 @@ final class AppStore {
     case .target(_, _, let period, let target):
       switch period {
       case .day:
-        let v = habit.progressByDayKey[dayKey] ?? 0
+        let v = healthDerivedProgressByHabitID[habit.id]?[dayKey] ?? (habit.progressByDayKey[dayKey] ?? 0)
         return v >= target
       case .week:
         let range = weekDayKeys(containing: now, calendar: calendar)
-        let sum = range.reduce(0.0) { $0 + (habit.progressByDayKey[$1] ?? 0) }
+        let sum = range.reduce(0.0) { acc, k in
+          let v = healthDerivedProgressByHabitID[habit.id]?[k] ?? (habit.progressByDayKey[k] ?? 0)
+          return acc + v
+        }
         return sum >= target
       }
     }
+  }
+
+  /// Sets (or replaces) HealthKit-derived series for a habit.
+  /// This is not persisted; it’s intended for live display and completion logic.
+  func setHealthDerivedSeries(habitID: String, points: [HealthTrendPoint], calendar: Calendar = .current) {
+    var map: [String: Double] = [:]
+    for p in points {
+      map[dayKey(for: p.day, calendar: calendar)] = max(0, p.value)
+    }
+    healthDerivedProgressByHabitID[habitID] = map
   }
 
   func habitStreakCount(_ habit: Habit, calendar: Calendar = .current, now: Date = Date()) -> Int {

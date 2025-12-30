@@ -8,9 +8,6 @@ struct MainTabView: View {
       TodayView(store: store)
         .tabItem { Label("Today", systemImage: "sun.max") }
 
-      HabitsView(store: store)
-        .tabItem { Label("Habits", systemImage: "checkmark.circle") }
-
       CompetitionsView(store: store)
         .tabItem { Label("Competitions", systemImage: "trophy") }
 
