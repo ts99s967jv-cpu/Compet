@@ -123,11 +123,21 @@ struct SignInView: View {
           Text("Backend not configured yet. Add SUPABASE_URL and SUPABASE_ANON_KEY to Info.plist to enable real sign up/login.")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
+        } else if !BackendConfig.hasSupabaseSDK {
+          Text("Backend config is present, but the Supabase SDK isn't linked. Add the supabase-swift package to the Xcode project to enable real sign up/login.")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
         } else if !Backend.shared.isAvailable {
           Text("Backend config is present, but the Supabase SDK isn't linked. Add the supabase-swift package to the Xcode project to enable real sign up/login.")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
         }
+
+#if DEBUG
+        Text(BackendConfig.debugSummary)
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+#endif
       }
       .dsCard()
       .padding(.horizontal, DS.Spacing.xl)
