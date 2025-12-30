@@ -143,18 +143,18 @@ struct SignInView: View {
 
     guard e.contains("@"), e.contains(".") else {
       errorMessage = "Enter a valid email."
-      return
+      return nil
     }
     if mode == .signUp {
       guard u.count >= 3, u.count <= 20, u.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) else {
         errorMessage = "Username must be 3–20 characters (letters, numbers, underscore)."
-        return
+        return nil
       }
     }
     if mode == .signUp || (mode == .signIn && !useMagicLinkForLogin) {
       guard isPasswordValid(p) else {
         errorMessage = "Password must be 8+ chars and include upper, lower, number, and symbol."
-        return
+        return nil
       }
     }
     return (e, u, p)
@@ -188,7 +188,7 @@ struct SignInView: View {
           displayName: v.username,
           handle: v.username,
           age: 18,
-          gender: .other,
+          gender: .preferNotToSay,
           fitnessLevel: .beginner,
           visibility: .public,
           hasFitnessTracker: false,
