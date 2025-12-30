@@ -40,8 +40,7 @@ struct DSFitnessDoodleBackground: View {
               .font(.system(size: 28, weight: .regular))
               .symbolRenderingMode(.hierarchical)
               .foregroundStyle(color)
-            let resolvedMain = context.resolve(text)
-            context.draw(resolvedMain, at: CGPoint(x: x, y: y), anchor: .center)
+            context.draw(text, at: CGPoint(x: x, y: y), anchor: .center)
 
             // Add a smaller secondary doodle sometimes.
             if hash3(c, r, 6) % 4 == 0 {
@@ -53,8 +52,7 @@ struct DSFitnessDoodleBackground: View {
                 .font(.system(size: 18, weight: .regular))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(base.opacity(0.9))
-              let resolved2 = context.resolve(text2)
-              context.draw(resolved2, at: CGPoint(x: x2, y: y2), anchor: .center)
+              context.draw(text2, at: CGPoint(x: x2, y: y2), anchor: .center)
             }
 
             // Apply transforms via a small group (rotation/scale).
@@ -67,7 +65,7 @@ struct DSFitnessDoodleBackground: View {
               context.rotate(by: rot)
               context.scaleBy(x: s, y: s)
               context.translateBy(x: -x, y: -y)
-              context.draw(resolvedMain, at: CGPoint(x: x, y: y), anchor: .center)
+              context.draw(text, at: CGPoint(x: x, y: y), anchor: .center)
               context.restoreGState()
             }
           }
