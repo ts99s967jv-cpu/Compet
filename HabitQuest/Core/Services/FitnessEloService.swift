@@ -35,6 +35,18 @@ final class FitnessEloService {
     }
   }
 
+  /// Refreshes ELO only if it hasn't been computed in the last `interval` seconds.
+  /// Keeps the manual refresh button behavior (this is additive).
+  func refreshIfNeeded(now: Date = Date(), interval: TimeInterval = 24 * 60 * 60) async -> Int? {
+    guard let profile = store.profile else { return nil }
+    guard profile.hasFitnessTracker else { return await refresh(now: now) }
+
+    if let ts = profile.fitnessEloUpdatedAt, now.timeIntervalSince(ts) < interval {
+      return profile.fitnessElo
+    }
+    return await refresh(now: now)
+  }
+
   func recommendedMatchRange(elo: Int) -> ClosedRange<Int> {
     // Chess-like: tighter at higher confidence. Prototype: +/- 200.
     let delta = 200
