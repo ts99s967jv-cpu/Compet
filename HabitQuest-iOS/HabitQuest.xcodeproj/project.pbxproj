@@ -1,0 +1,412 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		FA68841DF8D34906852B073A /* GameSettingsForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED7C1BB8B7E4138982EDC59 /* GameSettingsForm.swift */; };
+		C03897727FAF45A68CDA5FBD /* InvitesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42348648D9C54A18B4B91272 /* InvitesView.swift */; };
+		ACE7F980D59B44BEA516D33C /* CompetitionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4282359429D54ABAB36A0C8D /* CompetitionsView.swift */; };
+		3787B146C13B47E3BAC92995 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F764F173784107B686784D /* FriendsView.swift */; };
+		EE49D66B31654E7FB1792ECA /* InviteToGameSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CF3C64405447899FAF36CE /* InviteToGameSheet.swift */; };
+		C974861A8BB3416186C5916D /* AddHabitFlowSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53686366A5334D7EBFA56ADB /* AddHabitFlowSheet.swift */; };
+		31FDD4482D1C4A9A86065070 /* HabitEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0895670C244745A78B1F2D58 /* HabitEditSheet.swift */; };
+		48B1C89E8599498B881E0AD5 /* HabitLogProgressSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8B7C9E53EF4DA3A404133D /* HabitLogProgressSheet.swift */; };
+		0337805B33D645EA93B5D064 /* HabitsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63016D523824ED3B54F317A /* HabitsView.swift */; };
+		383C05BFF92B473F89A4820E /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1828BDFE7AA451392A133D0 /* OnboardingView.swift */; };
+		E56986E1402C46F3A9EC166A /* ProfileSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 155D0033F53441A881ED12E8 /* ProfileSetupView.swift */; };
+		C1B8BDC47CD24C7C8169AE6C /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A52957B04364CA79FD31902 /* SignInView.swift */; };
+		E37E03803136493D836079B3 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3062B1976D1428BA62CEF83 /* ProfileView.swift */; };
+		F938F407B4724B1A915274EE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E970B2DEA9E64077B1D107A7 /* SettingsView.swift */; };
+		8FEF42B52CE0490DBA79E0C1 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D01894BF733544FB9D8B26A6 /* TodayView.swift */; };
+		E8A1C97FFAF949B0943346D3 /* HabitQuestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B253CCB1596D495298B5C37B /* HabitQuestApp.swift */; };
+		84FAB9DBC7AF4B8989EAA8ED /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 463E13704EFF4F35A4E95E3A /* MainTabView.swift */; };
+		459EF8200F664CCEAC0B8EE5 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F6A99F33BD04577ABDEB4F7 /* RootView.swift */; };
+		CDA45DBCFD4E473DA688DE1A /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38981893672D4D1196063B4B /* DesignSystem.swift */; };
+		707C338AAE6F4C53897A03F5 /* HealthKitFitnessEloService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 162A23B1E94642CDA4C16411 /* HealthKitFitnessEloService.swift */; };
+		E0FCB43B1C9244299EDBA2B1 /* HealthKitScoringService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E60E11D10B34339825DCCD9 /* HealthKitScoringService.swift */; };
+		47977D2BA6234448B378C424 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70E8BBCB1FE47289FB41E23 /* Account.swift */; };
+		AD97C89F4DF5497897B323E9 /* ActiveGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A88D3A55CF445C9017D483 /* ActiveGame.swift */; };
+		EEC37A5C9E984C50A9875364 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55CE5A03AF5D4A7BA7C9E059 /* AppTheme.swift */; };
+		1BCD493AD8404676ABFC2EB7 /* Clan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385A3B2B2C014649BCA6BEE7 /* Clan.swift */; };
+		1DD8804A47544872AA132224 /* ClanBattle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F62B5DB2B8D4F948817799B /* ClanBattle.swift */; };
+		B72267465CE44FC7888FE6F2 /* ClanInvite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BCE907DFC834E6CA0F1F384 /* ClanInvite.swift */; };
+		05DD8D7E50A04BC5A68EA027 /* FitnessLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AFE5A60D3B54DA0AA7DC4B6 /* FitnessLevel.swift */; };
+		6531CC894F73481393A5AA9D /* Friend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DE2E3AF962A41DB88014F19 /* Friend.swift */; };
+		1045B556FEA74EE49826D41F /* GameInvite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C0D8E8529C8445C98A56B59 /* GameInvite.swift */; };
+		34ABA73CD4F2487BB4C381FC /* GameSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB9947D78564B838F3A8EB2 /* GameSettings.swift */; };
+		1DAE4C0A8B5847C3937922D7 /* Gender.swift in Sources */ = {isa = PBXBuildFile; fileRef = BED8E64ACB424A8082C11F9C /* Gender.swift */; };
+		13910BE3754E4A9681E43D71 /* Habit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85573FC0F77549DB892DF986 /* Habit.swift */; };
+		3A98AC5A1D644B52BC16CA09 /* PowerUp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3BC7BAC977C40B9BC8539FC /* PowerUp.swift */; };
+		1CE7C3C615684CA7B298404B /* ProfileVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD493D8D4AC14C56ADC0C166 /* ProfileVisibility.swift */; };
+		9C94E20A83354667ADF63B05 /* PublicGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0924B311C4EE4B268334DDBD /* PublicGame.swift */; };
+		30EE212E3460401AB3117F3E /* PublicUser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82FEBB7506B4BCEA8690012 /* PublicUser.swift */; };
+		03F78D929123469DA91564C5 /* ScoreMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7606FDB76D91463F8CEAC865 /* ScoreMetric.swift */; };
+		A10DBED24A3A4AF9ADBD1FCD /* TrackerFairness.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5F2E457F671443EAB6EDA12 /* TrackerFairness.swift */; };
+		972C951EBEE240959DFAFFB6 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82758987683B43CAB47DB459 /* UserProfile.swift */; };
+		F70E0A497A6C47A0AA40FEBC /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D46C452191C84303A5E17211 /* AppStore.swift */; };
+		FF79CB09D5794944A3BE3135 /* InMemoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00DF264D4E5A4E9CB5156DE3 /* InMemoryStore.swift */; };
+		45755854DDCD4B92AA97AF19 /* KeyValueStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B71C8B50095543D9934156D2 /* KeyValueStore.swift */; };
+		5E1C0FCD579843F997BAB23B /* ActiveGamesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E286037F9C02434E90AA1AE3 /* ActiveGamesService.swift */; };
+		BBC5C1E57F9946DF9BA757A4 /* FitnessEloService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC0F121F2A84267BBE169E3 /* FitnessEloService.swift */; };
+		64CAB741C6F54B83976CE466 /* FriendsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A78737CFF494498BDB5D847 /* FriendsService.swift */; };
+		8DE9958B258243459975BB66 /* GameInvitesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 666534EBD70C4460B683DC49 /* GameInvitesService.swift */; };
+		8D0F9C97B8A2476082EB7B6B /* InventoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E26F18912E754A96BAE668CF /* InventoryService.swift */; };
+		1D703D0EAF684373AF3EA291 /* PublicGamesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A8F58A92674173B4C52554 /* PublicGamesService.swift */; };
+		895CD3436CCC4F9D854AF8A4 /* SystemEventsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EBFD390C614ECB8318F796 /* SystemEventsService.swift */; };
+		231A12A0AC974F88BEE6244E /* UserDirectoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7842629AE9495B933A618C /* UserDirectoryService.swift */; };
+		E8E67FD628B2CC439321A9E2 /* ActiveGameViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B285A53E8DF01FA22A6C9A /* ActiveGameViews.swift */; };
+		3BCC166D9490DDBFFB16EBB1 /* GameVisualizations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8672268EAB4EB7AFC713A2C /* GameVisualizations.swift */; };
+		779485BAC6625B68ED840015 /* PublicUserProfileSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B278BAEA6C35AFE4E91B586C /* PublicUserProfileSheet.swift */; };
+		573D769C10E9F671C8B13949 /* EditProfileSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 906294509746AB15BF2FCA26 /* EditProfileSheet.swift */; };
+		FA3655E2922E350BA8F753E7 /* ProfileHabitsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 490CF5D037695D2C9BEC4BA0 /* ProfileHabitsSection.swift */; };
+		035C49A8AFD18EAE86D3E3B7 /* BackgroundPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F4D75D9824E29F370D980C /* BackgroundPattern.swift */; };
+		491C6FF24C447A27754E9B1D /* SectionHeaderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C47F176FFD25867EFE2501B /* SectionHeaderRow.swift */; };
+		C5D89169399364EBCCED8590 /* HealthKitStepSeriesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD7FE5B9D2B36B6ED1DEBFC2 /* HealthKitStepSeriesService.swift */; };
+		C8A1E5734A064BF93D4EFE7E /* HealthKitTrendsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6962A4EC31AFCF8E9766CD01 /* HealthKitTrendsService.swift */; };
+		B017959ECFA57CD2A53DC236 /* GameMapStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FB6070D7B857D5F2B4556B7 /* GameMapStyle.swift */; };
+		6F5D426061B960D46EAD3FAC /* GameScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2769AFFCBF25746B1534CC7 /* GameScore.swift */; };
+		7ABA431401AE5BFA308D7938 /* Array+Safe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02169B2242849D8CC5EEA8BA /* Array+Safe.swift */; };
+		774CE67B5F4A41FC9E6289E4 /* GameScoreSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B95B757462D67173BD65331F /* GameScoreSyncService.swift */; };
+		4A3D744AC5F884BB6FB930C5 /* Backend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 940DEE20D2965A50E0254BFC /* Backend.swift */; };
+		52FD88EDD222D1A62E70A142 /* BackendClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1711B3B33A849CCCF19F209F /* BackendClient.swift */; };
+		4B4E1C9EEAE8920C6EE89EA5 /* BackendConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353CDB69B77888C7E880483F /* BackendConfig.swift */; };
+		D5834F2043BF98EFEF1ACB8C /* BackendSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEFC5F211AFAFB8E678758B6 /* BackendSyncService.swift */; };
+		4E91ACC3ED061FFC515CC356 /* SupabaseBackendClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 162706CA404513F9D6EBDE99 /* SupabaseBackendClient.swift */; };
+		64F382889DE12C841965B5BF /* FriendRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 035FD280BDFBC74B6553D632 /* FriendRequest.swift */; };
+		8F3C7004E44BDBD41B51B638 /* BackendFriendsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C15B023E099DDEB49DFDC21 /* BackendFriendsService.swift */; };
+		402422E010E746B59A5A1C41 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 67AE00C3F693499097C20F44 /* Assets.xcassets */; };
+		7860F51FA762421D8E96ADA3 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A7883B5B95F488895B98BFA /* HealthKit.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		3ED7C1BB8B7E4138982EDC59 /* GameSettingsForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Challenges/GameSettingsForm.swift"; sourceTree = "<group>"; };
+		42348648D9C54A18B4B91272 /* InvitesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Challenges/InvitesView.swift"; sourceTree = "<group>"; };
+		4282359429D54ABAB36A0C8D /* CompetitionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Competitions/CompetitionsView.swift"; sourceTree = "<group>"; };
+		29F764F173784107B686784D /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Friends/FriendsView.swift"; sourceTree = "<group>"; };
+		30CF3C64405447899FAF36CE /* InviteToGameSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Friends/InviteToGameSheet.swift"; sourceTree = "<group>"; };
+		53686366A5334D7EBFA56ADB /* AddHabitFlowSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Habits/AddHabitFlowSheet.swift"; sourceTree = "<group>"; };
+		0895670C244745A78B1F2D58 /* HabitEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Habits/HabitEditSheet.swift"; sourceTree = "<group>"; };
+		0E8B7C9E53EF4DA3A404133D /* HabitLogProgressSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Habits/HabitLogProgressSheet.swift"; sourceTree = "<group>"; };
+		B63016D523824ED3B54F317A /* HabitsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Habits/HabitsView.swift"; sourceTree = "<group>"; };
+		D1828BDFE7AA451392A133D0 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Onboarding/OnboardingView.swift"; sourceTree = "<group>"; };
+		155D0033F53441A881ED12E8 /* ProfileSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Onboarding/ProfileSetupView.swift"; sourceTree = "<group>"; };
+		9A52957B04364CA79FD31902 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Onboarding/SignInView.swift"; sourceTree = "<group>"; };
+		B3062B1976D1428BA62CEF83 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Profile/ProfileView.swift"; sourceTree = "<group>"; };
+		E970B2DEA9E64077B1D107A7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Settings/SettingsView.swift"; sourceTree = "<group>"; };
+		D01894BF733544FB9D8B26A6 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Today/TodayView.swift"; sourceTree = "<group>"; };
+		B253CCB1596D495298B5C37B /* HabitQuestApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/HabitQuestApp.swift"; sourceTree = "<group>"; };
+		463E13704EFF4F35A4E95E3A /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/MainTabView.swift"; sourceTree = "<group>"; };
+		0F6A99F33BD04577ABDEB4F7 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/RootView.swift"; sourceTree = "<group>"; };
+		38981893672D4D1196063B4B /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/UI/DesignSystem.swift"; sourceTree = "<group>"; };
+		162A23B1E94642CDA4C16411 /* HealthKitFitnessEloService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Health/HealthKitFitnessEloService.swift"; sourceTree = "<group>"; };
+		6E60E11D10B34339825DCCD9 /* HealthKitScoringService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Health/HealthKitScoringService.swift"; sourceTree = "<group>"; };
+		D70E8BBCB1FE47289FB41E23 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/Account.swift"; sourceTree = "<group>"; };
+		B7A88D3A55CF445C9017D483 /* ActiveGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/ActiveGame.swift"; sourceTree = "<group>"; };
+		55CE5A03AF5D4A7BA7C9E059 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/AppTheme.swift"; sourceTree = "<group>"; };
+		385A3B2B2C014649BCA6BEE7 /* Clan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/Clan.swift"; sourceTree = "<group>"; };
+		1F62B5DB2B8D4F948817799B /* ClanBattle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/ClanBattle.swift"; sourceTree = "<group>"; };
+		5BCE907DFC834E6CA0F1F384 /* ClanInvite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/ClanInvite.swift"; sourceTree = "<group>"; };
+		3AFE5A60D3B54DA0AA7DC4B6 /* FitnessLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/FitnessLevel.swift"; sourceTree = "<group>"; };
+		0DE2E3AF962A41DB88014F19 /* Friend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/Friend.swift"; sourceTree = "<group>"; };
+		2C0D8E8529C8445C98A56B59 /* GameInvite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/GameInvite.swift"; sourceTree = "<group>"; };
+		BBB9947D78564B838F3A8EB2 /* GameSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/GameSettings.swift"; sourceTree = "<group>"; };
+		BED8E64ACB424A8082C11F9C /* Gender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/Gender.swift"; sourceTree = "<group>"; };
+		85573FC0F77549DB892DF986 /* Habit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/Habit.swift"; sourceTree = "<group>"; };
+		F3BC7BAC977C40B9BC8539FC /* PowerUp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/PowerUp.swift"; sourceTree = "<group>"; };
+		AD493D8D4AC14C56ADC0C166 /* ProfileVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/ProfileVisibility.swift"; sourceTree = "<group>"; };
+		0924B311C4EE4B268334DDBD /* PublicGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/PublicGame.swift"; sourceTree = "<group>"; };
+		D82FEBB7506B4BCEA8690012 /* PublicUser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/PublicUser.swift"; sourceTree = "<group>"; };
+		7606FDB76D91463F8CEAC865 /* ScoreMetric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/ScoreMetric.swift"; sourceTree = "<group>"; };
+		F5F2E457F671443EAB6EDA12 /* TrackerFairness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/TrackerFairness.swift"; sourceTree = "<group>"; };
+		82758987683B43CAB47DB459 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/UserProfile.swift"; sourceTree = "<group>"; };
+		D46C452191C84303A5E17211 /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Persistence/AppStore.swift"; sourceTree = "<group>"; };
+		00DF264D4E5A4E9CB5156DE3 /* InMemoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Persistence/InMemoryStore.swift"; sourceTree = "<group>"; };
+		B71C8B50095543D9934156D2 /* KeyValueStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Persistence/KeyValueStore.swift"; sourceTree = "<group>"; };
+		E286037F9C02434E90AA1AE3 /* ActiveGamesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/ActiveGamesService.swift"; sourceTree = "<group>"; };
+		4BC0F121F2A84267BBE169E3 /* FitnessEloService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/FitnessEloService.swift"; sourceTree = "<group>"; };
+		4A78737CFF494498BDB5D847 /* FriendsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/FriendsService.swift"; sourceTree = "<group>"; };
+		666534EBD70C4460B683DC49 /* GameInvitesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/GameInvitesService.swift"; sourceTree = "<group>"; };
+		E26F18912E754A96BAE668CF /* InventoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/InventoryService.swift"; sourceTree = "<group>"; };
+		D1A8F58A92674173B4C52554 /* PublicGamesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/PublicGamesService.swift"; sourceTree = "<group>"; };
+		B1EBFD390C614ECB8318F796 /* SystemEventsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/SystemEventsService.swift"; sourceTree = "<group>"; };
+		6D7842629AE9495B933A618C /* UserDirectoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/UserDirectoryService.swift"; sourceTree = "<group>"; };
+		69B285A53E8DF01FA22A6C9A /* ActiveGameViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Competitions/ActiveGameViews.swift"; sourceTree = "<group>"; };
+		C8672268EAB4EB7AFC713A2C /* GameVisualizations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Competitions/GameVisualizations.swift"; sourceTree = "<group>"; };
+		B278BAEA6C35AFE4E91B586C /* PublicUserProfileSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Friends/PublicUserProfileSheet.swift"; sourceTree = "<group>"; };
+		906294509746AB15BF2FCA26 /* EditProfileSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Profile/EditProfileSheet.swift"; sourceTree = "<group>"; };
+		490CF5D037695D2C9BEC4BA0 /* ProfileHabitsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/Features/Profile/ProfileHabitsSection.swift"; sourceTree = "<group>"; };
+		D0F4D75D9824E29F370D980C /* BackgroundPattern.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/UI/BackgroundPattern.swift"; sourceTree = "<group>"; };
+		1C47F176FFD25867EFE2501B /* SectionHeaderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/UI/SectionHeaderRow.swift"; sourceTree = "<group>"; };
+		DD7FE5B9D2B36B6ED1DEBFC2 /* HealthKitStepSeriesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Health/HealthKitStepSeriesService.swift"; sourceTree = "<group>"; };
+		6962A4EC31AFCF8E9766CD01 /* HealthKitTrendsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Health/HealthKitTrendsService.swift"; sourceTree = "<group>"; };
+		1FB6070D7B857D5F2B4556B7 /* GameMapStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/GameMapStyle.swift"; sourceTree = "<group>"; };
+		F2769AFFCBF25746B1534CC7 /* GameScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/GameScore.swift"; sourceTree = "<group>"; };
+		02169B2242849D8CC5EEA8BA /* Array+Safe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/Array+Safe.swift"; sourceTree = "<group>"; };
+		B95B757462D67173BD65331F /* GameScoreSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/GameScoreSyncService.swift"; sourceTree = "<group>"; };
+		940DEE20D2965A50E0254BFC /* Backend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Backend/Backend.swift"; sourceTree = "<group>"; };
+		1711B3B33A849CCCF19F209F /* BackendClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Backend/BackendClient.swift"; sourceTree = "<group>"; };
+		353CDB69B77888C7E880483F /* BackendConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Backend/BackendConfig.swift"; sourceTree = "<group>"; };
+		AEFC5F211AFAFB8E678758B6 /* BackendSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Backend/BackendSyncService.swift"; sourceTree = "<group>"; };
+		162706CA404513F9D6EBDE99 /* SupabaseBackendClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Backend/SupabaseBackendClient.swift"; sourceTree = "<group>"; };
+		035FD280BDFBC74B6553D632 /* FriendRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/FriendRequest.swift"; sourceTree = "<group>"; };
+		2C15B023E099DDEB49DFDC21 /* BackendFriendsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/BackendFriendsService.swift"; sourceTree = "<group>"; };
+		94362FAD014149A88E90AC46 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "HabitQuest/Info.plist"; sourceTree = "<group>"; };
+		0111ECC246CC491B9D7E2EA7 /* HabitQuest.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "HabitQuest/HabitQuest.entitlements"; sourceTree = "<group>"; };
+		67AE00C3F693499097C20F44 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "HabitQuest/Assets.xcassets"; sourceTree = "<group>"; };
+		7A7883B5B95F488895B98BFA /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		82235C322F7B4E08AF299224 /* HabitQuest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HabitQuest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A41629D68A6D4A008DB938A7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7860F51FA762421D8E96ADA3 /* HealthKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A87CA015C0404539882C8452 = {
+			isa = PBXGroup;
+			children = (
+				6DA1EDA1B4B64943874E9617 /* HabitQuest */,
+				4EC2EC2FD2D34ED1BB1AAA2D /* Frameworks */,
+				3EF0BDCFC846441DAAFABDD5 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		6DA1EDA1B4B64943874E9617 /* HabitQuest */ = {
+			isa = PBXGroup;
+			children = (
+				3ED7C1BB8B7E4138982EDC59 /* GameSettingsForm.swift */,
+				42348648D9C54A18B4B91272 /* InvitesView.swift */,
+				4282359429D54ABAB36A0C8D /* CompetitionsView.swift */,
+				29F764F173784107B686784D /* FriendsView.swift */,
+				30CF3C64405447899FAF36CE /* InviteToGameSheet.swift */,
+				53686366A5334D7EBFA56ADB /* AddHabitFlowSheet.swift */,
+				0895670C244745A78B1F2D58 /* HabitEditSheet.swift */,
+				0E8B7C9E53EF4DA3A404133D /* HabitLogProgressSheet.swift */,
+				B63016D523824ED3B54F317A /* HabitsView.swift */,
+				D1828BDFE7AA451392A133D0 /* OnboardingView.swift */,
+				155D0033F53441A881ED12E8 /* ProfileSetupView.swift */,
+				9A52957B04364CA79FD31902 /* SignInView.swift */,
+				B3062B1976D1428BA62CEF83 /* ProfileView.swift */,
+				E970B2DEA9E64077B1D107A7 /* SettingsView.swift */,
+				D01894BF733544FB9D8B26A6 /* TodayView.swift */,
+				B253CCB1596D495298B5C37B /* HabitQuestApp.swift */,
+				463E13704EFF4F35A4E95E3A /* MainTabView.swift */,
+				0F6A99F33BD04577ABDEB4F7 /* RootView.swift */,
+				38981893672D4D1196063B4B /* DesignSystem.swift */,
+				162A23B1E94642CDA4C16411 /* HealthKitFitnessEloService.swift */,
+				6E60E11D10B34339825DCCD9 /* HealthKitScoringService.swift */,
+				D70E8BBCB1FE47289FB41E23 /* Account.swift */,
+				B7A88D3A55CF445C9017D483 /* ActiveGame.swift */,
+				55CE5A03AF5D4A7BA7C9E059 /* AppTheme.swift */,
+				385A3B2B2C014649BCA6BEE7 /* Clan.swift */,
+				1F62B5DB2B8D4F948817799B /* ClanBattle.swift */,
+				5BCE907DFC834E6CA0F1F384 /* ClanInvite.swift */,
+				3AFE5A60D3B54DA0AA7DC4B6 /* FitnessLevel.swift */,
+				0DE2E3AF962A41DB88014F19 /* Friend.swift */,
+				2C0D8E8529C8445C98A56B59 /* GameInvite.swift */,
+				BBB9947D78564B838F3A8EB2 /* GameSettings.swift */,
+				BED8E64ACB424A8082C11F9C /* Gender.swift */,
+				85573FC0F77549DB892DF986 /* Habit.swift */,
+				F3BC7BAC977C40B9BC8539FC /* PowerUp.swift */,
+				AD493D8D4AC14C56ADC0C166 /* ProfileVisibility.swift */,
+				0924B311C4EE4B268334DDBD /* PublicGame.swift */,
+				D82FEBB7506B4BCEA8690012 /* PublicUser.swift */,
+				7606FDB76D91463F8CEAC865 /* ScoreMetric.swift */,
+				F5F2E457F671443EAB6EDA12 /* TrackerFairness.swift */,
+				82758987683B43CAB47DB459 /* UserProfile.swift */,
+				D46C452191C84303A5E17211 /* AppStore.swift */,
+				00DF264D4E5A4E9CB5156DE3 /* InMemoryStore.swift */,
+				B71C8B50095543D9934156D2 /* KeyValueStore.swift */,
+				E286037F9C02434E90AA1AE3 /* ActiveGamesService.swift */,
+				4BC0F121F2A84267BBE169E3 /* FitnessEloService.swift */,
+				4A78737CFF494498BDB5D847 /* FriendsService.swift */,
+				666534EBD70C4460B683DC49 /* GameInvitesService.swift */,
+				E26F18912E754A96BAE668CF /* InventoryService.swift */,
+				D1A8F58A92674173B4C52554 /* PublicGamesService.swift */,
+				B1EBFD390C614ECB8318F796 /* SystemEventsService.swift */,
+				6D7842629AE9495B933A618C /* UserDirectoryService.swift */,
+				94362FAD014149A88E90AC46 /* Info.plist */,
+				0111ECC246CC491B9D7E2EA7 /* HabitQuest.entitlements */,
+				67AE00C3F693499097C20F44 /* Assets.xcassets */,
+			);
+			path = "";
+			sourceTree = "<group>";
+		};
+		4EC2EC2FD2D34ED1BB1AAA2D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7A7883B5B95F488895B98BFA /* HealthKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		3EF0BDCFC846441DAAFABDD5 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				82235C322F7B4E08AF299224 /* HabitQuest.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D728292C3600448E9D5F5E56 /* HabitQuest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C76BE6D8D1A842BAB5D6B26E /* Build configuration list for PBXNativeTarget "HabitQuest" */;
+			buildPhases = (
+				77068A323A674B519EB1E8DC /* Sources */,
+				A41629D68A6D4A008DB938A7 /* Frameworks */,
+				B207BD9A8A9144DFB42E35EA /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = HabitQuest;
+			productName = HabitQuest;
+			productReference = 82235C322F7B4E08AF299224 /* HabitQuest.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DB363FF6CCFC403BA270B911 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					D728292C3600448E9D5F5E56 = {CreatedOnToolsVersion = 15.0;};
+				};
+			};
+			buildConfigurationList = 028D46C35DA44A02BB62A07B /* Build configuration list for PBXProject "HabitQuest" */;
+			compatibilityVersion = "Xcode 15.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			mainGroup = A87CA015C0404539882C8452;
+			productRefGroup = 3EF0BDCFC846441DAAFABDD5;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D728292C3600448E9D5F5E56 /* HabitQuest */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B207BD9A8A9144DFB42E35EA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				402422E010E746B59A5A1C41 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		77068A323A674B519EB1E8DC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FA68841DF8D34906852B073A /* GameSettingsForm.swift in Sources */,
+				C03897727FAF45A68CDA5FBD /* InvitesView.swift in Sources */,
+				ACE7F980D59B44BEA516D33C /* CompetitionsView.swift in Sources */,
+				E8E67FD628B2CC439321A9E2 /* ActiveGameViews.swift in Sources */,
+				3BCC166D9490DDBFFB16EBB1 /* GameVisualizations.swift in Sources */,
+				3787B146C13B47E3BAC92995 /* FriendsView.swift in Sources */,
+				EE49D66B31654E7FB1792ECA /* InviteToGameSheet.swift in Sources */,
+				779485BAC6625B68ED840015 /* PublicUserProfileSheet.swift in Sources */,
+				C974861A8BB3416186C5916D /* AddHabitFlowSheet.swift in Sources */,
+				31FDD4482D1C4A9A86065070 /* HabitEditSheet.swift in Sources */,
+				48B1C89E8599498B881E0AD5 /* HabitLogProgressSheet.swift in Sources */,
+				0337805B33D645EA93B5D064 /* HabitsView.swift in Sources */,
+				383C05BFF92B473F89A4820E /* OnboardingView.swift in Sources */,
+				E56986E1402C46F3A9EC166A /* ProfileSetupView.swift in Sources */,
+				C1B8BDC47CD24C7C8169AE6C /* SignInView.swift in Sources */,
+				573D769C10E9F671C8B13949 /* EditProfileSheet.swift in Sources */,
+				E37E03803136493D836079B3 /* ProfileView.swift in Sources */,
+				FA3655E2922E350BA8F753E7 /* ProfileHabitsSection.swift in Sources */,
+				F938F407B4724B1A915274EE /* SettingsView.swift in Sources */,
+				8FEF42B52CE0490DBA79E0C1 /* TodayView.swift in Sources */,
+				E8A1C97FFAF949B0943346D3 /* HabitQuestApp.swift in Sources */,
+				84FAB9DBC7AF4B8989EAA8ED /* MainTabView.swift in Sources */,
+				459EF8200F664CCEAC0B8EE5 /* RootView.swift in Sources */,
+				CDA45DBCFD4E473DA688DE1A /* DesignSystem.swift in Sources */,
+				035C49A8AFD18EAE86D3E3B7 /* BackgroundPattern.swift in Sources */,
+				491C6FF24C447A27754E9B1D /* SectionHeaderRow.swift in Sources */,
+				707C338AAE6F4C53897A03F5 /* HealthKitFitnessEloService.swift in Sources */,
+				E0FCB43B1C9244299EDBA2B1 /* HealthKitScoringService.swift in Sources */,
+				C5D89169399364EBCCED8590 /* HealthKitStepSeriesService.swift in Sources */,
+				C8A1E5734A064BF93D4EFE7E /* HealthKitTrendsService.swift in Sources */,
+				4A3D744AC5F884BB6FB930C5 /* Backend.swift in Sources */,
+				52FD88EDD222D1A62E70A142 /* BackendClient.swift in Sources */,
+				4B4E1C9EEAE8920C6EE89EA5 /* BackendConfig.swift in Sources */,
+				D5834F2043BF98EFEF1ACB8C /* BackendSyncService.swift in Sources */,
+				4E91ACC3ED061FFC515CC356 /* SupabaseBackendClient.swift in Sources */,
+				47977D2BA6234448B378C424 /* Account.swift in Sources */,
+				AD97C89F4DF5497897B323E9 /* ActiveGame.swift in Sources */,
+				EEC37A5C9E984C50A9875364 /* AppTheme.swift in Sources */,
+				1BCD493AD8404676ABFC2EB7 /* Clan.swift in Sources */,
+				1DD8804A47544872AA132224 /* ClanBattle.swift in Sources */,
+				B72267465CE44FC7888FE6F2 /* ClanInvite.swift in Sources */,
+				05DD8D7E50A04BC5A68EA027 /* FitnessLevel.swift in Sources */,
+				6531CC894F73481393A5AA9D /* Friend.swift in Sources */,
+				64F382889DE12C841965B5BF /* FriendRequest.swift in Sources */,
+				1045B556FEA74EE49826D41F /* GameInvite.swift in Sources */,
+				B017959ECFA57CD2A53DC236 /* GameMapStyle.swift in Sources */,
+				6F5D426061B960D46EAD3FAC /* GameScore.swift in Sources */,
+				34ABA73CD4F2487BB4C381FC /* GameSettings.swift in Sources */,
+				1DAE4C0A8B5847C3937922D7 /* Gender.swift in Sources */,
+				13910BE3754E4A9681E43D71 /* Habit.swift in Sources */,
+				3A98AC5A1D644B52BC16CA09 /* PowerUp.swift in Sources */,
+				1CE7C3C615684CA7B298404B /* ProfileVisibility.swift in Sources */,
+				9C94E20A83354667ADF63B05 /* PublicGame.swift in Sources */,
+				30EE212E3460401AB3117F3E /* PublicUser.swift in Sources */,
+				03F78D929123469DA91564C5 /* ScoreMetric.swift in Sources */,
+				A10DBED24A3A4AF9ADBD1FCD /* TrackerFairness.swift in Sources */,
+				972C951EBEE240959DFAFFB6 /* UserProfile.swift in Sources */,
+				F70E0A497A6C47A0AA40FEBC /* AppStore.swift in Sources */,
+				FF79CB09D5794944A3BE3135 /* InMemoryStore.swift in Sources */,
+				45755854DDCD4B92AA97AF19 /* KeyValueStore.swift in Sources */,
+				5E1C0FCD579843F997BAB23B /* ActiveGamesService.swift in Sources */,
+				7ABA431401AE5BFA308D7938 /* Array+Safe.swift in Sources */,
+				BBC5C1E57F9946DF9BA757A4 /* FitnessEloService.swift in Sources */,
+				64CAB741C6F54B83976CE466 /* FriendsService.swift in Sources */,
+				8F3C7004E44BDBD41B51B638 /* BackendFriendsService.swift in Sources */,
+				8DE9958B258243459975BB66 /* GameInvitesService.swift in Sources */,
+				774CE67B5F4A41FC9E6289E4 /* GameScoreSyncService.swift in Sources */,
+				8D0F9C97B8A2476082EB7B6B /* InventoryService.swift in Sources */,
+				1D703D0EAF684373AF3EA291 /* PublicGamesService.swift in Sources */,
+				895CD3436CCC4F9D854AF8A4 /* SystemEventsService.swift in Sources */,
+				231A12A0AC974F88BEE6244E /* UserDirectoryService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		7281449BE14845FC9BEF2275 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ANALYZER_NONNULL = YES; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES; DEBUG_INFORMATION_FORMAT = dwarf; GCC_C_LANGUAGE_STANDARD = gnu17; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 5.0;}; name = Debug; };
+		D85E831EBB6F477DA93340B8 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ANALYZER_NONNULL = YES; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES; DEBUG_INFORMATION_FORMAT = dwarf-with-dsym; GCC_C_LANGUAGE_STANDARD = gnu17; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 5.0;}; name = Release; };
+		8F3A180DE25E432E80273657 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; DEVELOPMENT_TEAM = ""; INFOPLIST_FILE = HabitQuest/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.HabitQuest; PRODUCT_NAME = HabitQuest; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphonesimulator iphoneos"; SUPPORTS_MACCATALYST = NO; SWIFT_OPTIMIZATION_LEVEL = -Onone; TARGETED_DEVICE_FAMILY = "1";}; name = Debug; };
+		0321B6C0066D4842920EAED6 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; DEVELOPMENT_TEAM = ""; INFOPLIST_FILE = HabitQuest/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.HabitQuest; PRODUCT_NAME = HabitQuest; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphonesimulator iphoneos"; SUPPORTS_MACCATALYST = NO; SWIFT_OPTIMIZATION_LEVEL = -O; TARGETED_DEVICE_FAMILY = "1";}; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		028D46C35DA44A02BB62A07B /* Build configuration list for PBXProject "HabitQuest" */ = {isa = XCConfigurationList; buildConfigurations = (7281449BE14845FC9BEF2275 /* Debug */, D85E831EBB6F477DA93340B8 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		C76BE6D8D1A842BAB5D6B26E /* Build configuration list for PBXNativeTarget "HabitQuest" */ = {isa = XCConfigurationList; buildConfigurations = (8F3A180DE25E432E80273657 /* Debug */, 0321B6C0066D4842920EAED6 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+
+	};
+	rootObject = DB363FF6CCFC403BA270B911 /* Project object */;
+}
