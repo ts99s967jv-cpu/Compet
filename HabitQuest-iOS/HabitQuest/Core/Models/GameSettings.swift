@@ -65,8 +65,8 @@ enum GameWinCondition: String, Codable, CaseIterable, Identifiable {
     case .mostPointsAtEnd: "Most points at end"
     case .levelVsLevelGoal: "Level vs level goal (daily beat-the-score)"
     case .eliminationLastManStanding: "Elimination (last man standing)"
-    case .kingOfMonth: "King of the Month"
-    case .kingOfYear: "King of the Year"
+    case .kingOfMonth: "Monthly champion"
+    case .kingOfYear: "Yearly champion"
     }
   }
 }

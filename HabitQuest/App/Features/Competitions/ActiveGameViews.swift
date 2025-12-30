@@ -219,9 +219,9 @@ struct ActiveGameDetailSheet: View {
     case .eliminationLastManStanding:
       return "Elimination • Bottom removed daily"
     case .kingOfMonth:
-      return "King of the Month • Bottom removed weekly • Join anytime"
+      return "Monthly champion • Bottom removed weekly • Join anytime"
     case .kingOfYear:
-      return "King of the Year • Bottom removed monthly • Join anytime"
+      return "Yearly champion • Bottom removed monthly • Join anytime"
     default:
       return "Competition"
     }

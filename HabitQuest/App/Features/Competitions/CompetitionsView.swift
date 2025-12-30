@@ -7,6 +7,11 @@ struct CompetitionsView: View {
   @State private var showCreatePublicGame: Bool = false
   @State private var selectedPublicGameID: String?
   @State private var selectedActiveGameID: String?
+  @State private var browseSort: BrowseSort = .newest
+  @State private var filterMode: GameModeKind? = nil
+  @State private var filterWinCondition: GameWinCondition? = nil
+  @State private var filterMetric: ScoreMetric? = nil
+  @State private var hideFull: Bool = false
 
   var body: some View {
     NavigationStack {
@@ -22,12 +27,33 @@ struct CompetitionsView: View {
             .foregroundStyle(DS.Palette.subtext(scheme))
             .padding(.horizontal, DS.Spacing.xl)
 
-          Text("Active")
+          // System events pinned at the top (and nowhere else).
+          let championshipEvents = store.publicGames
+            .filter { $0.visibility == .systemEvent && $0.status != .finished }
+            .sorted { ($0.title) < ($1.title) }
+
+          VStack(spacing: DS.Spacing.m) {
+            if !championshipEvents.isEmpty {
+              Text("Championship events")
+                .dsSectionHeader()
+
+              ForEach(championshipEvents) { game in
+                PublicGameCard(game: game, variant: .systemEvent) {
+                  selectedPublicGameID = game.id
+                }
+                .padding(.horizontal, DS.Spacing.xl)
+              }
+            }
+          }
+
+          Text("Your games")
             .dsSectionHeader()
 
           VStack(spacing: DS.Spacing.m) {
             let comps = competitionCards
-            let activeGames = store.activeGames
+            // Hide system-season active games here; they are represented above as championship events.
+            let activeGames = store.activeGames.filter { !$0.id.hasPrefix("ag_sys_") }
+
             if comps.isEmpty && activeGames.isEmpty {
               emptyState
                 .padding(.horizontal, DS.Spacing.xl)
@@ -47,49 +73,120 @@ struct CompetitionsView: View {
             }
           }
 
+          // Public lobbies (non-system), with filters.
           Text("Public games")
             .dsSectionHeader()
 
           VStack(spacing: DS.Spacing.m) {
-            let systemEvents = store.publicGames.filter { $0.visibility == .systemEvent }.sorted { ($0.isPinned ? 0 : 1, $0.title) < ($1.isPinned ? 0 : 1, $1.title) }
-            let publicLobbies = store.publicGames.filter { $0.visibility == .public && $0.status != .finished }
-            let privateLobbies = store.publicGames.filter { $0.visibility == .private && ($0.contains(userID: store.profile?.id ?? "") || $0.createdBy.id == (store.profile?.id ?? "")) }
+            let meID = store.profile?.id ?? ""
+            let privateLobbies = store.publicGames.filter { $0.visibility == .private && ($0.contains(userID: meID) || $0.createdBy.id == meID) }
+            let basePublic = store.publicGames.filter { $0.visibility == .public && $0.status != .finished }
 
-            if !systemEvents.isEmpty {
-              Text("System events")
-                .dsSectionHeader()
-              ForEach(systemEvents) { game in
-                PublicGameCard(game: game) {
-                  selectedPublicGameID = game.id
+            let filtered = basePublic
+              .filter { g in
+                if hideFull, g.isFull { return false }
+                if let filterMode, g.settings.mode != filterMode { return false }
+                if let filterWinCondition, g.settings.winCondition != filterWinCondition { return false }
+                if let filterMetric, !g.settings.scoringMetrics.contains(filterMetric) { return false }
+                return true
+              }
+
+            let joined = filtered.filter { meID.isEmpty ? false : $0.contains(userID: meID) }
+            let discover = filtered.filter { meID.isEmpty ? true : !$0.contains(userID: meID) }
+
+            HStack(alignment: .firstTextBaseline) {
+              Text("Browse")
+                .font(DS.Typography.section)
+              Spacer()
+              Menu {
+                Picker("Sort", selection: $browseSort) {
+                  ForEach(BrowseSort.allCases) { s in
+                    Text(s.title).tag(s)
+                  }
                 }
-                .padding(.horizontal, DS.Spacing.xl)
+                Divider()
+                Picker("Mode", selection: Binding(
+                  get: { filterMode?.id ?? "all" },
+                  set: { newValue in filterMode = (newValue == "all") ? nil : GameModeKind(rawValue: newValue) }
+                )) {
+                  Text("All").tag("all")
+                  ForEach(GameModeKind.allCases) { m in
+                    Text(m.title).tag(m.rawValue)
+                  }
+                }
+                Picker("Win condition", selection: Binding(
+                  get: { filterWinCondition?.id ?? "all" },
+                  set: { newValue in filterWinCondition = (newValue == "all") ? nil : GameWinCondition(rawValue: newValue) }
+                )) {
+                  Text("All").tag("all")
+                  ForEach(GameWinCondition.allCases) { w in
+                    Text(w.title).tag(w.rawValue)
+                  }
+                }
+                Picker("Metric", selection: Binding(
+                  get: { filterMetric?.shortTitle ?? "all" },
+                  set: { newValue in
+                    filterMetric = ScoreMetric.allCases.first(where: { $0.shortTitle == newValue })
+                    if newValue == "all" { filterMetric = nil }
+                  }
+                )) {
+                  Text("All").tag("all")
+                  ForEach(ScoreMetric.allCases) { m in
+                    Text(m.shortTitle).tag(m.shortTitle)
+                  }
+                }
+                Toggle("Hide full games", isOn: $hideFull)
+                Divider()
+                Button("Reset filters") {
+                  browseSort = .newest
+                  filterMode = nil
+                  filterWinCondition = nil
+                  filterMetric = nil
+                  hideFull = false
+                }
+              } label: {
+                Label("Filter & sort", systemImage: "line.3.horizontal.decrease.circle")
+                  .font(DS.Typography.caption.weight(.semibold))
+                  .foregroundStyle(DS.Palette.subtext(scheme))
               }
             }
+            .padding(.horizontal, DS.Spacing.xl)
 
-            if !privateLobbies.isEmpty {
-              Text("Private lobbies")
-                .dsSectionHeader()
-              ForEach(privateLobbies) { game in
-                PublicGameCard(game: game) {
-                  selectedPublicGameID = game.id
-                }
-                .padding(.horizontal, DS.Spacing.xl)
-              }
-            }
-
-            if publicLobbies.isEmpty && systemEvents.isEmpty {
+            if joined.isEmpty && discover.isEmpty && privateLobbies.isEmpty {
               publicEmptyState
                 .padding(.horizontal, DS.Spacing.xl)
             } else {
-              if !publicLobbies.isEmpty {
-                Text("Browse")
+              if !joined.isEmpty {
+                Text("Joined")
                   .dsSectionHeader()
-              }
-              ForEach(publicLobbies.filter { $0.status == .open }) { game in
-                PublicGameCard(game: game) {
-                  selectedPublicGameID = game.id
+                ForEach(sortedPublic(joined)) { game in
+                  PublicGameCard(game: game, variant: .joined) {
+                    selectedPublicGameID = game.id
+                  }
+                  .padding(.horizontal, DS.Spacing.xl)
                 }
-                .padding(.horizontal, DS.Spacing.xl)
+              }
+
+              if !discover.isEmpty {
+                Text("Discover")
+                  .dsSectionHeader()
+                ForEach(sortedPublic(discover).filter { $0.status == .open }) { game in
+                  PublicGameCard(game: game, variant: .discover) {
+                    selectedPublicGameID = game.id
+                  }
+                  .padding(.horizontal, DS.Spacing.xl)
+                }
+              }
+
+              if !privateLobbies.isEmpty {
+                Text("Private lobbies")
+                  .dsSectionHeader()
+                ForEach(privateLobbies.sorted { $0.createdAt > $1.createdAt }) { game in
+                  PublicGameCard(game: game, variant: .privateLobby) {
+                    selectedPublicGameID = game.id
+                  }
+                  .padding(.horizontal, DS.Spacing.xl)
+                }
               }
             }
           }
@@ -237,6 +334,37 @@ struct CompetitionsView: View {
     ], at: 0)
     store.saveAll()
   }
+
+  private func sortedPublic(_ games: [PublicGame]) -> [PublicGame] {
+    switch browseSort {
+    case .newest:
+      return games.sorted { $0.createdAt > $1.createdAt }
+    case .playersHighToLow:
+      return games.sorted { $0.players.count > $1.players.count }
+    case .timeLimitShortToLong:
+      return games.sorted { $0.settings.timeLimitDays < $1.settings.timeLimitDays }
+    case .titleAZ:
+      return games.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+    }
+  }
+}
+
+private enum BrowseSort: String, CaseIterable, Identifiable {
+  case newest
+  case playersHighToLow
+  case timeLimitShortToLong
+  case titleAZ
+
+  var id: String { rawValue }
+
+  var title: String {
+    switch self {
+    case .newest: "Newest"
+    case .playersHighToLow: "Most players"
+    case .timeLimitShortToLong: "Shortest duration"
+    case .titleAZ: "Title A–Z"
+    }
+  }
 }
 
 private struct CompetitionCard: Identifiable, Hashable {
@@ -293,6 +421,7 @@ private struct CompetitionCardView: View {
 private struct PublicGameCard: View {
   @Environment(\.colorScheme) private var scheme
   let game: PublicGame
+  let variant: Variant
   let tapped: () -> Void
 
   var body: some View {
@@ -319,19 +448,69 @@ private struct PublicGameCard: View {
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
           Spacer()
-          Text(game.visibility == .systemEvent ? "Pinned event" : "Host: \(game.createdBy.displayName)")
+          Text(footerText)
             .font(DS.Typography.caption.weight(.semibold))
-            .foregroundStyle(DS.Palette.subtext(scheme))
+            .foregroundStyle(footerColor)
         }
       }
       .dsCard()
+      .overlay(
+        RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+          .fill(overlayColor)
+      )
     }
     .buttonStyle(.plain)
+  }
+
+  private var footerText: String {
+    switch variant {
+    case .systemEvent:
+      return "Pinned event"
+    case .joined:
+      return "Joined"
+    case .discover:
+      return "Host: \(game.createdBy.displayName)"
+    case .privateLobby:
+      return "Private"
+    }
+  }
+
+  private var footerColor: Color {
+    switch variant {
+    case .systemEvent:
+      return DS.Palette.accent
+    case .joined:
+      return DS.Palette.accent
+    case .discover:
+      return DS.Palette.subtext(scheme)
+    case .privateLobby:
+      return DS.Palette.subtext(scheme)
+    }
+  }
+
+  private var overlayColor: Color {
+    switch variant {
+    case .systemEvent:
+      return DS.Palette.accent.opacity(0.06)
+    case .joined:
+      return DS.Palette.accent.opacity(0.04)
+    case .discover:
+      return DS.Palette.surface(scheme).opacity(0)
+    case .privateLobby:
+      return DS.Palette.separator(scheme).opacity(0.06)
+    }
   }
 
   private func playerCountText(_ game: PublicGame) -> String {
     if game.isUnlimitedPlayers { return "\(game.players.count)/∞" }
     return "\(game.players.count)/\(game.maxPlayers)"
+  }
+
+  enum Variant: String {
+    case systemEvent
+    case joined
+    case discover
+    case privateLobby
   }
 }
 

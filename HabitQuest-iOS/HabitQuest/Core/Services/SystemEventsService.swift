@@ -27,7 +27,7 @@ final class SystemEventsService {
     settings.phoneOnlyMetrics = false
 
     let systemUser = PublicUser(id: "system", displayName: "HabitQuest", handle: "habitquest", visibility: .public)
-    let title = "King of the Month — " + seasonStart.formatted(.dateTime.month(.wide)) + " " + seasonStart.formatted(.dateTime.year())
+    let title = "Monthly champion — " + seasonStart.formatted(.dateTime.month(.wide)) + " " + seasonStart.formatted(.dateTime.year())
 
     let publicGame = upsertSystemPublicGame(
       id: id,
@@ -58,7 +58,7 @@ final class SystemEventsService {
     settings.phoneOnlyMetrics = false
 
     let systemUser = PublicUser(id: "system", displayName: "HabitQuest", handle: "habitquest", visibility: .public)
-    let title = "King of the Year — " + seasonStart.formatted(.dateTime.year())
+    let title = "Yearly champion — " + seasonStart.formatted(.dateTime.year())
 
     let publicGame = upsertSystemPublicGame(
       id: id,
