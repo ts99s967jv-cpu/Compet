@@ -27,8 +27,8 @@ final class SupabaseBackendClient: BackendClient {
   }
 
   func signIn(email: String, password: String) async throws -> String {
-    let res = try await client.auth.signIn(email: email, password: password)
-    return res.user.id.uuidString
+    let session = try await client.auth.signIn(email: email, password: password)
+    return session.user.id.uuidString
   }
 
   func signOut() async { try? await client.auth.signOut() }
@@ -51,7 +51,7 @@ final class SupabaseBackendClient: BackendClient {
 
   func fetchMyProfile() async throws -> UserProfile? {
     guard let uid = client.auth.currentUser?.id else { return nil }
-    let rows: [ProfileRow] = try await client.database
+    let rows: [ProfileRow] = try await client
       .from("profiles")
       .select()
       .eq("id", value: uid.uuidString)
@@ -79,14 +79,17 @@ final class SupabaseBackendClient: BackendClient {
       created_at: profile.createdAt,
       updated_at: profile.updatedAt
     )
-    _ = try await client.database.from("profiles").upsert(row, onConflict: "id").execute()
+    _ = try await client
+      .from("profiles")
+      .upsert(row, onConflict: "id")
+      .execute()
   }
 
   func searchUsers(query: String) async throws -> [PublicUser] {
     let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !q.isEmpty else { return [] }
     struct PublicRow: Codable { var id: UUID; var display_name: String; var handle: String; var visibility: String }
-    let rows: [PublicRow] = try await client.database
+    let rows: [PublicRow] = try await client
       .from("profiles")
       .select("id,display_name,handle,visibility")
       .or("display_name.ilike.%\(q)%,handle.ilike.%\(q)%")
@@ -100,7 +103,7 @@ final class SupabaseBackendClient: BackendClient {
 
   func fetchPublicUser(userID: String) async throws -> PublicUser? {
     struct PublicRow: Codable { var id: UUID; var display_name: String; var handle: String; var visibility: String }
-    let rows: [PublicRow] = try await client.database
+    let rows: [PublicRow] = try await client
       .from("profiles")
       .select("id,display_name,handle,visibility")
       .eq("id", value: userID)
@@ -123,7 +126,7 @@ final class SupabaseBackendClient: BackendClient {
   }
 
   func listFriendRequests() async throws -> [FriendRequest] {
-    let rows: [FriendRequestRow] = try await client.database
+    let rows: [FriendRequestRow] = try await client
       .from("friend_requests")
       .select("id,from_user_id,to_user_id,status,created_at,from_profile:profiles!friend_requests_from_user_id_fkey(id,display_name,handle,visibility),to_profile:profiles!friend_requests_to_user_id_fkey(id,display_name,handle,visibility)")
       .order("created_at", ascending: false)
@@ -143,11 +146,14 @@ final class SupabaseBackendClient: BackendClient {
   func sendFriendRequest(to userID: String) async throws {
     guard let me = client.auth.currentUser?.id else { return }
     struct Insert: Codable { var from_user_id: UUID; var to_user_id: UUID }
-    _ = try await client.database.from("friend_requests").insert(Insert(from_user_id: me, to_user_id: UUID(uuidString: userID)!)).execute()
+    _ = try await client
+      .from("friend_requests")
+      .insert(Insert(from_user_id: me, to_user_id: UUID(uuidString: userID)!))
+      .execute()
   }
 
   func respondToFriendRequest(requestID: String, accept: Bool) async throws {
-    _ = try await client.database
+    _ = try await client
       .from("friend_requests")
       .update(["status": accept ? "accepted" : "declined"])
       .eq("id", value: requestID)
@@ -164,7 +170,7 @@ final class SupabaseBackendClient: BackendClient {
 
   func listFriends() async throws -> [PublicUser] {
     guard let me = client.auth.currentUser?.id else { return [] }
-    let rows: [FriendshipRow] = try await client.database
+    let rows: [FriendshipRow] = try await client
       .from("friendships")
       .select("id,user_id,friend_user_id,created_at,friend_profile:profiles!friendships_friend_user_id_fkey(id,display_name,handle,visibility)")
       .eq("user_id", value: me.uuidString)
@@ -178,8 +184,18 @@ final class SupabaseBackendClient: BackendClient {
 
   func removeFriend(userID: String) async throws {
     guard let me = client.auth.currentUser?.id else { return }
-    _ = try await client.database.from("friendships").delete().eq("user_id", value: me.uuidString).eq("friend_user_id", value: userID).execute()
-    _ = try await client.database.from("friendships").delete().eq("user_id", value: userID).eq("friend_user_id", value: me.uuidString).execute()
+    _ = try await client
+      .from("friendships")
+      .delete()
+      .eq("user_id", value: me.uuidString)
+      .eq("friend_user_id", value: userID)
+      .execute()
+    _ = try await client
+      .from("friendships")
+      .delete()
+      .eq("user_id", value: userID)
+      .eq("friend_user_id", value: me.uuidString)
+      .execute()
   }
 
   func listPublicGames() async throws -> [PublicGame] {
@@ -198,7 +214,7 @@ final class SupabaseBackendClient: BackendClient {
     }
     struct PlayerRow: Codable { var user_id: UUID; var joined_at: Date; var profile: ProfilePublicRow }
 
-    let rows: [GameRow] = try await client.database
+    let rows: [GameRow] = try await client
       .from("public_games_view")
       .select()
       .order("created_at", ascending: false)
@@ -237,22 +253,40 @@ final class SupabaseBackendClient: BackendClient {
       var settings: GameSettings
     }
     let gid = UUID(uuidString: game.id) ?? UUID()
-    _ = try await client.database.from("public_games").insert(Insert(id: gid, title: game.title, created_by: me, visibility: game.visibility.rawValue, is_pinned: game.isPinned, is_unlimited_players: game.isUnlimitedPlayers, status: game.status.rawValue, max_players: game.maxPlayers, settings: game.settings)).execute()
-    _ = try await client.database.from("public_game_players").insert(["game_id": gid.uuidString, "user_id": me.uuidString]).execute()
+    _ = try await client
+      .from("public_games")
+      .insert(Insert(id: gid, title: game.title, created_by: me, visibility: game.visibility.rawValue, is_pinned: game.isPinned, is_unlimited_players: game.isUnlimitedPlayers, status: game.status.rawValue, max_players: game.maxPlayers, settings: game.settings))
+      .execute()
+    _ = try await client
+      .from("public_game_players")
+      .insert(["game_id": gid.uuidString, "user_id": me.uuidString])
+      .execute()
   }
 
   func joinPublicGame(gameID: String) async throws {
     guard let me = client.auth.currentUser?.id else { return }
-    _ = try await client.database.from("public_game_players").insert(["game_id": gameID, "user_id": me.uuidString]).execute()
+    _ = try await client
+      .from("public_game_players")
+      .insert(["game_id": gameID, "user_id": me.uuidString])
+      .execute()
   }
 
   func leavePublicGame(gameID: String) async throws {
     guard let me = client.auth.currentUser?.id else { return }
-    _ = try await client.database.from("public_game_players").delete().eq("game_id", value: gameID).eq("user_id", value: me.uuidString).execute()
+    _ = try await client
+      .from("public_game_players")
+      .delete()
+      .eq("game_id", value: gameID)
+      .eq("user_id", value: me.uuidString)
+      .execute()
   }
 
   func startPublicGameNow(gameID: String) async throws {
-    _ = try await client.database.from("public_games").update(["status": "started"]).eq("id", value: gameID).execute()
+    _ = try await client
+      .from("public_games")
+      .update(["status": "started"])
+      .eq("id", value: gameID)
+      .execute()
   }
 
   private func mapProfile(_ row: ProfileRow) -> UserProfile {
