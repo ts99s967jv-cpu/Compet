@@ -57,6 +57,19 @@
 		1D703D0EAF684373AF3EA291 /* PublicGamesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A8F58A92674173B4C52554 /* PublicGamesService.swift */; };
 		895CD3436CCC4F9D854AF8A4 /* SystemEventsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EBFD390C614ECB8318F796 /* SystemEventsService.swift */; };
 		231A12A0AC974F88BEE6244E /* UserDirectoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7842629AE9495B933A618C /* UserDirectoryService.swift */; };
+		E8E67FD628B2CC439321A9E2 /* ActiveGameViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B285A53E8DF01FA22A6C9A /* ActiveGameViews.swift */; };
+		3BCC166D9490DDBFFB16EBB1 /* GameVisualizations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8672268EAB4EB7AFC713A2C /* GameVisualizations.swift */; };
+		779485BAC6625B68ED840015 /* PublicUserProfileSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B278BAEA6C35AFE4E91B586C /* PublicUserProfileSheet.swift */; };
+		573D769C10E9F671C8B13949 /* EditProfileSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 906294509746AB15BF2FCA26 /* EditProfileSheet.swift */; };
+		FA3655E2922E350BA8F753E7 /* ProfileHabitsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 490CF5D037695D2C9BEC4BA0 /* ProfileHabitsSection.swift */; };
+		035C49A8AFD18EAE86D3E3B7 /* BackgroundPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F4D75D9824E29F370D980C /* BackgroundPattern.swift */; };
+		491C6FF24C447A27754E9B1D /* SectionHeaderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C47F176FFD25867EFE2501B /* SectionHeaderRow.swift */; };
+		C5D89169399364EBCCED8590 /* HealthKitStepSeriesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD7FE5B9D2B36B6ED1DEBFC2 /* HealthKitStepSeriesService.swift */; };
+		C8A1E5734A064BF93D4EFE7E /* HealthKitTrendsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6962A4EC31AFCF8E9766CD01 /* HealthKitTrendsService.swift */; };
+		B017959ECFA57CD2A53DC236 /* GameMapStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FB6070D7B857D5F2B4556B7 /* GameMapStyle.swift */; };
+		6F5D426061B960D46EAD3FAC /* GameScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2769AFFCBF25746B1534CC7 /* GameScore.swift */; };
+		7ABA431401AE5BFA308D7938 /* Array+Safe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02169B2242849D8CC5EEA8BA /* Array+Safe.swift */; };
+		774CE67B5F4A41FC9E6289E4 /* GameScoreSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B95B757462D67173BD65331F /* GameScoreSyncService.swift */; };
 		402422E010E746B59A5A1C41 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 67AE00C3F693499097C20F44 /* Assets.xcassets */; };
 		7860F51FA762421D8E96ADA3 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A7883B5B95F488895B98BFA /* HealthKit.framework */; };
 /* End PBXBuildFile section */
@@ -113,6 +126,19 @@
 		D1A8F58A92674173B4C52554 /* PublicGamesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Services/PublicGamesService.swift"; sourceTree = "<group>"; };
 		B1EBFD390C614ECB8318F796 /* SystemEventsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Services/SystemEventsService.swift"; sourceTree = "<group>"; };
 		6D7842629AE9495B933A618C /* UserDirectoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Services/UserDirectoryService.swift"; sourceTree = "<group>"; };
+		69B285A53E8DF01FA22A6C9A /* ActiveGameViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/Features/Competitions/ActiveGameViews.swift"; sourceTree = "<group>"; };
+		C8672268EAB4EB7AFC713A2C /* GameVisualizations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/Features/Competitions/GameVisualizations.swift"; sourceTree = "<group>"; };
+		B278BAEA6C35AFE4E91B586C /* PublicUserProfileSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/Features/Friends/PublicUserProfileSheet.swift"; sourceTree = "<group>"; };
+		906294509746AB15BF2FCA26 /* EditProfileSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/Features/Profile/EditProfileSheet.swift"; sourceTree = "<group>"; };
+		490CF5D037695D2C9BEC4BA0 /* ProfileHabitsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/Features/Profile/ProfileHabitsSection.swift"; sourceTree = "<group>"; };
+		D0F4D75D9824E29F370D980C /* BackgroundPattern.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/UI/BackgroundPattern.swift"; sourceTree = "<group>"; };
+		1C47F176FFD25867EFE2501B /* SectionHeaderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/UI/SectionHeaderRow.swift"; sourceTree = "<group>"; };
+		DD7FE5B9D2B36B6ED1DEBFC2 /* HealthKitStepSeriesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Health/HealthKitStepSeriesService.swift"; sourceTree = "<group>"; };
+		6962A4EC31AFCF8E9766CD01 /* HealthKitTrendsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Health/HealthKitTrendsService.swift"; sourceTree = "<group>"; };
+		1FB6070D7B857D5F2B4556B7 /* GameMapStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Models/GameMapStyle.swift"; sourceTree = "<group>"; };
+		F2769AFFCBF25746B1534CC7 /* GameScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Models/GameScore.swift"; sourceTree = "<group>"; };
+		02169B2242849D8CC5EEA8BA /* Array+Safe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Services/Array+Safe.swift"; sourceTree = "<group>"; };
+		B95B757462D67173BD65331F /* GameScoreSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Services/GameScoreSyncService.swift"; sourceTree = "<group>"; };
 		94362FAD014149A88E90AC46 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
 		0111ECC246CC491B9D7E2EA7 /* HabitQuest.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "HabitQuest.entitlements"; sourceTree = "<group>"; };
 		67AE00C3F693499097C20F44 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
@@ -282,8 +308,11 @@
 				FA68841DF8D34906852B073A /* GameSettingsForm.swift in Sources */,
 				C03897727FAF45A68CDA5FBD /* InvitesView.swift in Sources */,
 				ACE7F980D59B44BEA516D33C /* CompetitionsView.swift in Sources */,
+				E8E67FD628B2CC439321A9E2 /* ActiveGameViews.swift in Sources */,
+				3BCC166D9490DDBFFB16EBB1 /* GameVisualizations.swift in Sources */,
 				3787B146C13B47E3BAC92995 /* FriendsView.swift in Sources */,
 				EE49D66B31654E7FB1792ECA /* InviteToGameSheet.swift in Sources */,
+				779485BAC6625B68ED840015 /* PublicUserProfileSheet.swift in Sources */,
 				C974861A8BB3416186C5916D /* AddHabitFlowSheet.swift in Sources */,
 				31FDD4482D1C4A9A86065070 /* HabitEditSheet.swift in Sources */,
 				48B1C89E8599498B881E0AD5 /* HabitLogProgressSheet.swift in Sources */,
@@ -291,15 +320,21 @@
 				383C05BFF92B473F89A4820E /* OnboardingView.swift in Sources */,
 				E56986E1402C46F3A9EC166A /* ProfileSetupView.swift in Sources */,
 				C1B8BDC47CD24C7C8169AE6C /* SignInView.swift in Sources */,
+				573D769C10E9F671C8B13949 /* EditProfileSheet.swift in Sources */,
 				E37E03803136493D836079B3 /* ProfileView.swift in Sources */,
+				FA3655E2922E350BA8F753E7 /* ProfileHabitsSection.swift in Sources */,
 				F938F407B4724B1A915274EE /* SettingsView.swift in Sources */,
 				8FEF42B52CE0490DBA79E0C1 /* TodayView.swift in Sources */,
 				E8A1C97FFAF949B0943346D3 /* HabitQuestApp.swift in Sources */,
 				84FAB9DBC7AF4B8989EAA8ED /* MainTabView.swift in Sources */,
 				459EF8200F664CCEAC0B8EE5 /* RootView.swift in Sources */,
 				CDA45DBCFD4E473DA688DE1A /* DesignSystem.swift in Sources */,
+				035C49A8AFD18EAE86D3E3B7 /* BackgroundPattern.swift in Sources */,
+				491C6FF24C447A27754E9B1D /* SectionHeaderRow.swift in Sources */,
 				707C338AAE6F4C53897A03F5 /* HealthKitFitnessEloService.swift in Sources */,
 				E0FCB43B1C9244299EDBA2B1 /* HealthKitScoringService.swift in Sources */,
+				C5D89169399364EBCCED8590 /* HealthKitStepSeriesService.swift in Sources */,
+				C8A1E5734A064BF93D4EFE7E /* HealthKitTrendsService.swift in Sources */,
 				47977D2BA6234448B378C424 /* Account.swift in Sources */,
 				AD97C89F4DF5497897B323E9 /* ActiveGame.swift in Sources */,
 				EEC37A5C9E984C50A9875364 /* AppTheme.swift in Sources */,
@@ -309,6 +344,8 @@
 				05DD8D7E50A04BC5A68EA027 /* FitnessLevel.swift in Sources */,
 				6531CC894F73481393A5AA9D /* Friend.swift in Sources */,
 				1045B556FEA74EE49826D41F /* GameInvite.swift in Sources */,
+				B017959ECFA57CD2A53DC236 /* GameMapStyle.swift in Sources */,
+				6F5D426061B960D46EAD3FAC /* GameScore.swift in Sources */,
 				34ABA73CD4F2487BB4C381FC /* GameSettings.swift in Sources */,
 				1DAE4C0A8B5847C3937922D7 /* Gender.swift in Sources */,
 				13910BE3754E4A9681E43D71 /* Habit.swift in Sources */,
@@ -323,9 +360,11 @@
 				FF79CB09D5794944A3BE3135 /* InMemoryStore.swift in Sources */,
 				45755854DDCD4B92AA97AF19 /* KeyValueStore.swift in Sources */,
 				5E1C0FCD579843F997BAB23B /* ActiveGamesService.swift in Sources */,
+				7ABA431401AE5BFA308D7938 /* Array+Safe.swift in Sources */,
 				BBC5C1E57F9946DF9BA757A4 /* FitnessEloService.swift in Sources */,
 				64CAB741C6F54B83976CE466 /* FriendsService.swift in Sources */,
 				8DE9958B258243459975BB66 /* GameInvitesService.swift in Sources */,
+				774CE67B5F4A41FC9E6289E4 /* GameScoreSyncService.swift in Sources */,
 				8D0F9C97B8A2476082EB7B6B /* InventoryService.swift in Sources */,
 				1D703D0EAF684373AF3EA291 /* PublicGamesService.swift in Sources */,
 				895CD3436CCC4F9D854AF8A4 /* SystemEventsService.swift in Sources */,

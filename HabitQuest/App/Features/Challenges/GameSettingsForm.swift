@@ -22,6 +22,17 @@ struct GameSettingsForm: View {
       }
     }
 
+    Section("Visual map") {
+      Picker("Map style", selection: $settings.mapStyle) {
+        ForEach(GameMapStyle.allCases) { s in
+          Text(s.title).tag(s)
+        }
+      }
+      Text("This controls the illustrated in-game track (Steps → grassy trail, Cycling → road, Swimming → pool).")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+    }
+
     Section("Scoring (Health)") {
       Toggle("Phone-only metrics", isOn: Binding(
         get: { settings.phoneOnlyMetrics },

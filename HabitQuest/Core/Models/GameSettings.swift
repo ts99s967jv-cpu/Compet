@@ -75,6 +75,8 @@ enum GameWinCondition: String, Codable, CaseIterable, Identifiable {
 struct GameSettings: Codable, Equatable, Hashable {
   var mode: GameModeKind
   var activity: GameActivity
+  /// Visual theme used for the in-game map/track.
+  var mapStyle: GameMapStyle
   /// Metrics included in the points total (e.g. steps + calories burned).
   /// This is the "custom rule" used for scoring.
   var scoringMetrics: [ScoreMetric]
@@ -96,6 +98,7 @@ struct GameSettings: Codable, Equatable, Hashable {
     GameSettings(
       mode: mode,
       activity: .steps,
+      mapStyle: .automatic,
       scoringMetrics: [.steps],
       opponentPolicy: .anyone,
       phoneOnlyMetrics: false,
@@ -113,6 +116,54 @@ extension GameSettings {
     if scoringMetrics.isEmpty { return "Points" }
     let base = scoringMetrics.map(\.shortTitle).joined(separator: " + ")
     return phoneOnlyMetrics ? "\(base) (phone-only)" : base
+  }
+}
+
+// MARK: - Backward compatible decoding
+
+extension GameSettings {
+  private enum CodingKeys: String, CodingKey {
+    case mode
+    case activity
+    case mapStyle
+    case scoringMetrics
+    case opponentPolicy
+    case phoneOnlyMetrics
+    case timeLimitDays
+    case winCondition
+    case levelVsLevelStartingTarget
+    case enabledPowerUps
+    case customRulesNote
+  }
+
+  init(from decoder: Decoder) throws {
+    let c = try decoder.container(keyedBy: CodingKeys.self)
+    self.mode = try c.decode(GameModeKind.self, forKey: .mode)
+    self.activity = try c.decode(GameActivity.self, forKey: .activity)
+    self.mapStyle = (try? c.decode(GameMapStyle.self, forKey: .mapStyle)) ?? .automatic
+    self.scoringMetrics = (try? c.decode([ScoreMetric].self, forKey: .scoringMetrics)) ?? [.steps]
+    self.opponentPolicy = (try? c.decode(TrackerOpponentPolicy.self, forKey: .opponentPolicy)) ?? .anyone
+    self.phoneOnlyMetrics = (try? c.decode(Bool.self, forKey: .phoneOnlyMetrics)) ?? false
+    self.timeLimitDays = (try? c.decode(Int.self, forKey: .timeLimitDays)) ?? 7
+    self.winCondition = (try? c.decode(GameWinCondition.self, forKey: .winCondition)) ?? .mostPointsAtEnd
+    self.levelVsLevelStartingTarget = (try? c.decode(Int.self, forKey: .levelVsLevelStartingTarget)) ?? 10_000
+    self.enabledPowerUps = (try? c.decode([PowerUpID].self, forKey: .enabledPowerUps)) ?? []
+    self.customRulesNote = (try? c.decode(String.self, forKey: .customRulesNote)) ?? ""
+  }
+
+  func encode(to encoder: Encoder) throws {
+    var c = encoder.container(keyedBy: CodingKeys.self)
+    try c.encode(mode, forKey: .mode)
+    try c.encode(activity, forKey: .activity)
+    try c.encode(mapStyle, forKey: .mapStyle)
+    try c.encode(scoringMetrics, forKey: .scoringMetrics)
+    try c.encode(opponentPolicy, forKey: .opponentPolicy)
+    try c.encode(phoneOnlyMetrics, forKey: .phoneOnlyMetrics)
+    try c.encode(timeLimitDays, forKey: .timeLimitDays)
+    try c.encode(winCondition, forKey: .winCondition)
+    try c.encode(levelVsLevelStartingTarget, forKey: .levelVsLevelStartingTarget)
+    try c.encode(enabledPowerUps, forKey: .enabledPowerUps)
+    try c.encode(customRulesNote, forKey: .customRulesNote)
   }
 }
 

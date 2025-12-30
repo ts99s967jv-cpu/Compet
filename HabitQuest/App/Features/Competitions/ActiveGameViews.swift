@@ -64,6 +64,7 @@ struct ActiveGameDetailSheet: View {
   private var game: ActiveGame? { store.activeGames.first(where: { $0.id == gameID }) }
   @State private var now: Date = Date()
   @State private var isSyncing: Bool = false
+  @State private var primaryView: ActiveGamePrimaryView = .map
 
   var body: some View {
     NavigationStack {
@@ -76,106 +77,7 @@ struct ActiveGameDetailSheet: View {
                     (game.settings.winCondition == .eliminationLastManStanding
                      || game.settings.winCondition == .kingOfMonth
                      || game.settings.winCondition == .kingOfYear) {
-            VStack(alignment: .leading, spacing: DS.Spacing.s) {
-              Text(game.title)
-                .font(DS.Typography.title)
-              Text(subtitle(for: game))
-                .font(DS.Typography.body)
-                .foregroundStyle(DS.Palette.subtext(scheme))
-            }
-            .padding(.horizontal, DS.Spacing.xl)
-            .padding(.top, DS.Spacing.l)
-
-            VStack(alignment: .leading, spacing: DS.Spacing.s) {
-              Text("Schedule")
-                .font(DS.Typography.section)
-              if game.settings.winCondition == .kingOfMonth || game.settings.winCondition == .kingOfYear {
-                Text("Season: \(game.createdAt.formatted(date: .abbreviated, time: .omitted)) → \((elim.endsAt ?? .now).formatted(date: .abbreviated, time: .omitted))")
-                  .font(DS.Typography.caption)
-                  .foregroundStyle(DS.Palette.subtext(scheme))
-              }
-
-              Text("Round \(elim.roundIndex + 1) • \(elim.cadence.title) elimination")
-                .font(DS.Typography.caption)
-                .foregroundStyle(DS.Palette.subtext(scheme))
-
-              let svc = ActiveGamesService(store: store)
-              let cutoff = svc.nextEliminationDate(for: elim) ?? .now
-              Text("Next elimination: \(cutoff.formatted(date: .abbreviated, time: .shortened))")
-                .font(DS.Typography.caption)
-                .foregroundStyle(DS.Palette.subtext(scheme))
-
-              Text("Time remaining: \(timeRemainingText(to: cutoff, now: now))")
-                .font(DS.Typography.caption.weight(.semibold))
-                .foregroundStyle(DS.Palette.subtext(scheme))
-
-              let projected = svc.projectedEliminationsThisRound(game: game)
-              if projected > 0 {
-                Text("Elimination zone: bottom \(projected) player\(projected == 1 ? "" : "s")")
-                  .font(DS.Typography.caption)
-                  .foregroundStyle(DS.Palette.subtext(scheme))
-              }
-            }
-            .dsCard()
-            .padding(.horizontal, DS.Spacing.xl)
-
-            VStack(alignment: .leading, spacing: DS.Spacing.s) {
-              Text("Scoreboard")
-                .font(DS.Typography.section)
-
-              let svc = ActiveGamesService(store: store)
-              let remaining = game.players.filter { !elim.eliminatedUserIDs.contains($0.id) }
-              let rowsDesc = remaining
-                .map { ($0, svc.leaderboardPointsFor(activeGameID: game.id, userID: $0.id, roundIndex: elim.roundIndex, seed: elim.roundStartedAt)) }
-                .sorted { $0.1 > $1.1 }
-
-              let projected = svc.projectedEliminationsThisRound(game: game)
-              let eliminationZoneIDs: Set<String> = Set(
-                rowsDesc
-                  .suffix(max(0, min(projected, rowsDesc.count)))
-                  .map { $0.0.id }
-              )
-
-              ForEach(Array(rowsDesc.enumerated()), id: \.offset) { idx, row in
-                let isInZone = eliminationZoneIDs.contains(row.0.id)
-                HStack {
-                  Text("#\(idx + 1)")
-                    .font(DS.Typography.caption)
-                    .foregroundStyle(DS.Palette.subtext(scheme))
-                    .frame(width: 28, alignment: .leading)
-                    .monospacedDigit()
-                  Text(row.0.displayName)
-                    .font(DS.Typography.body.weight(.semibold))
-                  Spacer()
-                  Text("\(row.1)")
-                    .font(DS.Typography.body.weight(.semibold))
-                    .monospacedDigit()
-                }
-                .foregroundStyle(isInZone ? DS.Palette.danger : DS.Palette.text(scheme))
-                if idx != rowsDesc.count - 1 {
-                  Divider().overlay(DS.Palette.separator(scheme))
-                }
-              }
-
-              if let meID = store.profile?.id,
-                 let score = store.gameScore(activeGameID: game.id, roundIndex: elim.roundIndex, userID: meID) {
-                Text("Synced \(score.updatedAt.formatted(date: .abbreviated, time: .shortened)) • \(game.settings.scoringSummary)")
-                  .font(DS.Typography.caption)
-                  .foregroundStyle(DS.Palette.subtext(scheme))
-              } else {
-                Text("Syncing uses Apple Health: \(game.settings.scoringSummary).")
-                  .font(DS.Typography.caption)
-                  .foregroundStyle(DS.Palette.subtext(scheme))
-              }
-
-              if let meID = store.profile?.id, eliminationZoneIDs.contains(meID) {
-                Text("You’re currently in the elimination zone. Increase your points before the cutoff.")
-                  .font(DS.Typography.caption.weight(.semibold))
-                  .foregroundStyle(DS.Palette.danger)
-              }
-            }
-            .dsCard()
-            .padding(.horizontal, DS.Spacing.xl)
+            eliminationContent(game: game, elim: elim)
 
             if !elim.eliminatedUserIDs.isEmpty {
               VStack(alignment: .leading, spacing: DS.Spacing.s) {
@@ -204,6 +106,8 @@ struct ActiveGameDetailSheet: View {
             .tint(DS.Palette.accent)
             .padding(.horizontal, DS.Spacing.xl)
             .padding(.top, DS.Spacing.s)
+          } else if let game {
+            mostPointsContent(game: game)
           }
 
           Spacer(minLength: DS.Spacing.xxl)
@@ -241,64 +145,357 @@ struct ActiveGameDetailSheet: View {
     let svc = ActiveGamesService(store: store)
     let cutoff = state.turnStartedAt.addingTimeInterval(24 * 60 * 60)
 
-    VStack(alignment: .leading, spacing: DS.Spacing.s) {
-      Text(game.title)
-        .font(DS.Typography.title)
-      Text(subtitle(for: game))
-        .font(DS.Typography.body)
-        .foregroundStyle(DS.Palette.subtext(scheme))
+    let activeUserID = state.turnOrderUserIDs[safe: state.currentTurnPlayerIndex] ?? ""
+    let players: [TowerPlayer] = game.players.map { u in
+      let score = svc.leaderboardPointsFor(activeGameID: game.id, userID: u.id, roundIndex: state.turnIndex, seed: state.turnStartedAt)
+      return TowerPlayer(
+        id: u.id,
+        displayName: u.displayName,
+        score: score,
+        isMe: u.id == store.profile?.id,
+        isActiveTurn: u.id == activeUserID
+      )
     }
+
+    VStack(alignment: .leading, spacing: DS.Spacing.m) {
+      Picker("View", selection: $primaryView) {
+        ForEach(ActiveGamePrimaryView.allCases) { t in
+          Text(t.title).tag(t)
+        }
+      }
+      .pickerStyle(.segmented)
+      .tint(DS.Palette.accent)
+      .padding(.horizontal, DS.Spacing.xl)
+      .padding(.top, DS.Spacing.l)
+
+      if primaryView == .map {
+        LevelVsLevelTowerCard(
+          title: game.title,
+          subtitle: "Ends in \(timeRemainingText(to: cutoff, now: now)) • Target \(state.currentTarget)",
+          turnIndex: state.turnIndex,
+          currentTarget: state.currentTarget,
+          lastAchievedScore: state.lastAchievedScore,
+          players: players
+        )
+        .padding(.horizontal, DS.Spacing.xl)
+
+        VStack(alignment: .leading, spacing: DS.Spacing.s) {
+          Text("Today’s turn")
+            .font(DS.Typography.section)
+          let activeName = game.players.first(where: { $0.id == activeUserID })?.displayName ?? "Player"
+          Text("Up now: \(activeName)")
+            .font(DS.Typography.body.weight(.semibold))
+          Text("Target: \(state.currentTarget) • Ends in \(timeRemainingText(to: cutoff, now: now))")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+          if let last = state.lastAchievedScore {
+            Text("Previous score: \(last) → you must beat it")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+          }
+        }
+        .dsCard()
+        .padding(.horizontal, DS.Spacing.xl)
+      } else {
+        // Leaderboard view for the current turn (prototype).
+        VStack(alignment: .leading, spacing: DS.Spacing.s) {
+          Text(game.title)
+            .font(DS.Typography.title)
+          Text(subtitle(for: game))
+            .font(DS.Typography.body)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+
+          Divider().overlay(DS.Palette.separator(scheme))
+
+          ForEach(players.sorted(by: { $0.score > $1.score })) { p in
+            HStack {
+              Text(p.displayName)
+                .font(DS.Typography.body.weight(.semibold))
+              Spacer()
+              Text("\(p.score)")
+                .font(DS.Typography.body.weight(.semibold))
+                .monospacedDigit()
+            }
+            .foregroundStyle(p.isMe ? DS.Palette.accent : DS.Palette.text(scheme))
+          }
+
+          Text("Scoring: \(game.settings.scoringSummary)")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+        .dsCard()
+        .padding(.horizontal, DS.Spacing.xl)
+      }
+
+      VStack(alignment: .leading, spacing: DS.Spacing.s) {
+        Text("Result")
+          .font(DS.Typography.section)
+
+        if game.status == .finished {
+          let winner = state.winnerUserID.flatMap { id in game.players.first(where: { $0.id == id })?.displayName } ?? "—"
+          Text("Winner: \(winner)")
+            .font(DS.Typography.body.weight(.semibold))
+            .foregroundStyle(DS.Palette.accent)
+        } else {
+          Text("Round \(state.turnIndex + 1) • Updates at turn end")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+      }
+      .dsCard()
+      .padding(.horizontal, DS.Spacing.xl)
+    }
+  }
+
+  @ViewBuilder
+  private func eliminationContent(game: ActiveGame, elim: EliminationState) -> some View {
+    let svc = ActiveGamesService(store: store)
+    let cutoff = svc.nextEliminationDate(for: elim) ?? .now
+    let remaining = game.players.filter { !elim.eliminatedUserIDs.contains($0.id) }
+    let rowsDesc = remaining
+      .map { ($0, svc.leaderboardPointsFor(activeGameID: game.id, userID: $0.id, roundIndex: elim.roundIndex, seed: elim.roundStartedAt)) }
+      .sorted { $0.1 > $1.1 }
+
+    let projected = svc.projectedEliminationsThisRound(game: game)
+    let eliminationZoneIDs: Set<String> = Set(
+      rowsDesc
+        .suffix(max(0, min(projected, rowsDesc.count)))
+        .map { $0.0.id }
+    )
+
+    Picker("View", selection: $primaryView) {
+      ForEach(ActiveGamePrimaryView.allCases) { t in
+        Text(t.title).tag(t)
+      }
+    }
+    .pickerStyle(.segmented)
+    .tint(DS.Palette.accent)
     .padding(.horizontal, DS.Spacing.xl)
     .padding(.top, DS.Spacing.l)
 
-    VStack(alignment: .leading, spacing: DS.Spacing.s) {
-      Text("Today’s turn")
-        .font(DS.Typography.section)
+    if primaryView == .map {
+      let map = game.settings.mapStyle.resolved(for: game.settings.activity)
+      let maxScore = max(1, rowsDesc.first?.1 ?? 1)
+      GameMapTrackCard(
+        title: game.title,
+        subtitle: "\(subtitle(for: game)) • Ends in \(timeRemainingText(to: cutoff, now: now))",
+        style: map,
+        checkpoints: defaultCheckpoints(maxScore: maxScore, activity: game.settings.activity),
+        players: rowsDesc.map { (u, s) in
+          GameMapPlayer(
+            id: u.id,
+            displayName: u.displayName,
+            progress: Double(s) / Double(maxScore),
+            isMe: u.id == store.profile?.id
+          )
+        }
+      )
+      .padding(.horizontal, DS.Spacing.xl)
 
-      let activeUserID = state.turnOrderUserIDs[safe: state.currentTurnPlayerIndex] ?? ""
-      let activeName = game.players.first(where: { $0.id == activeUserID })?.displayName ?? "Player"
-
-      Text("Up now: \(activeName)")
-        .font(DS.Typography.body.weight(.semibold))
-
-      Text("Target: \(state.currentTarget) • Ends in \(timeRemainingText(to: cutoff, now: now))")
-        .font(DS.Typography.caption)
-        .foregroundStyle(DS.Palette.subtext(scheme))
-
-      if let last = state.lastAchievedScore {
-        Text("Previous score: \(last) → you must beat it")
-          .font(DS.Typography.caption)
-          .foregroundStyle(DS.Palette.subtext(scheme))
-      }
-
-      if let meID = store.profile?.id {
-        let myScore = svc.leaderboardPointsFor(activeGameID: game.id, userID: meID, roundIndex: state.turnIndex, seed: state.turnStartedAt)
-        Text("Your current score: \(myScore)")
+      VStack(alignment: .leading, spacing: DS.Spacing.s) {
+        Text("Round \(elim.roundIndex + 1) • Next elimination \(cutoff.formatted(date: .abbreviated, time: .shortened))")
           .font(DS.Typography.caption.weight(.semibold))
           .foregroundStyle(DS.Palette.subtext(scheme))
-          .monospacedDigit()
+        if projected > 0 {
+          Text("Elimination zone: bottom \(projected) player\(projected == 1 ? "" : "s")")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+      }
+      .dsCard()
+      .padding(.horizontal, DS.Spacing.xl)
+    } else {
+      VStack(alignment: .leading, spacing: DS.Spacing.s) {
+        Text("Schedule")
+          .font(DS.Typography.section)
+        if game.settings.winCondition == .kingOfMonth || game.settings.winCondition == .kingOfYear {
+          Text("Season: \(game.createdAt.formatted(date: .abbreviated, time: .omitted)) → \((elim.endsAt ?? .now).formatted(date: .abbreviated, time: .omitted))")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+
+        Text("Round \(elim.roundIndex + 1) • \(elim.cadence.title) elimination")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+
+        Text("Next elimination: \(cutoff.formatted(date: .abbreviated, time: .shortened))")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+
+        Text("Time remaining: \(timeRemainingText(to: cutoff, now: now))")
+          .font(DS.Typography.caption.weight(.semibold))
+          .foregroundStyle(DS.Palette.subtext(scheme))
+      }
+      .dsCard()
+      .padding(.horizontal, DS.Spacing.xl)
+
+      VStack(alignment: .leading, spacing: DS.Spacing.s) {
+        Text("Scoreboard")
+          .font(DS.Typography.section)
+
+        ForEach(Array(rowsDesc.enumerated()), id: \.offset) { idx, row in
+          let isInZone = eliminationZoneIDs.contains(row.0.id)
+          HStack {
+            Text("#\(idx + 1)")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .frame(width: 28, alignment: .leading)
+              .monospacedDigit()
+            Text(row.0.displayName)
+              .font(DS.Typography.body.weight(.semibold))
+            Spacer()
+            Text("\(row.1)")
+              .font(DS.Typography.body.weight(.semibold))
+              .monospacedDigit()
+          }
+          .foregroundStyle(isInZone ? DS.Palette.danger : DS.Palette.text(scheme))
+          if idx != rowsDesc.count - 1 {
+            Divider().overlay(DS.Palette.separator(scheme))
+          }
+        }
+
+        if let meID = store.profile?.id,
+           let score = store.gameScore(activeGameID: game.id, roundIndex: elim.roundIndex, userID: meID) {
+          Text("Synced \(score.updatedAt.formatted(date: .abbreviated, time: .shortened)) • \(game.settings.scoringSummary)")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        } else {
+          Text("Syncing uses Apple Health: \(game.settings.scoringSummary).")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+
+        if let meID = store.profile?.id, eliminationZoneIDs.contains(meID) {
+          Text("You’re currently in the elimination zone. Increase your points before the cutoff.")
+            .font(DS.Typography.caption.weight(.semibold))
+            .foregroundStyle(DS.Palette.danger)
+        }
+      }
+      .dsCard()
+      .padding(.horizontal, DS.Spacing.xl)
+    }
+  }
+
+  @ViewBuilder
+  private func mostPointsContent(game: ActiveGame) -> some View {
+    let svc = ActiveGamesService(store: store)
+    let meID = store.profile?.id
+    let seed = game.createdAt
+    let rowsDesc = game.players
+      .map { ($0, svc.leaderboardPointsFor(activeGameID: game.id, userID: $0.id, roundIndex: 0, seed: seed)) }
+      .sorted { $0.1 > $1.1 }
+
+    let maxScore = max(1, rowsDesc.first?.1 ?? 1)
+    let endsAt = game.createdAt.addingTimeInterval(TimeInterval(game.settings.timeLimitDays) * 24 * 60 * 60)
+
+    Picker("View", selection: $primaryView) {
+      ForEach(ActiveGamePrimaryView.allCases) { t in
+        Text(t.title).tag(t)
       }
     }
-    .dsCard()
+    .pickerStyle(.segmented)
+    .tint(DS.Palette.accent)
     .padding(.horizontal, DS.Spacing.xl)
+    .padding(.top, DS.Spacing.l)
 
-    VStack(alignment: .leading, spacing: DS.Spacing.s) {
-      Text("Result")
-        .font(DS.Typography.section)
+    if primaryView == .map {
+      let map = game.settings.mapStyle.resolved(for: game.settings.activity)
+      GameMapTrackCard(
+        title: game.title,
+        subtitle: "\(game.settings.activity.title) • Ends in \(timeRemainingText(to: endsAt, now: now))",
+        style: map,
+        checkpoints: defaultCheckpoints(maxScore: maxScore, activity: game.settings.activity),
+        players: rowsDesc.map { (u, s) in
+          GameMapPlayer(
+            id: u.id,
+            displayName: u.displayName,
+            progress: Double(s) / Double(maxScore),
+            isMe: u.id == meID
+          )
+        }
+      )
+      .padding(.horizontal, DS.Spacing.xl)
 
-      if game.status == .finished {
-        let winner = state.winnerUserID.flatMap { id in game.players.first(where: { $0.id == id })?.displayName } ?? "—"
-        Text("Winner: \(winner)")
-          .font(DS.Typography.body.weight(.semibold))
-          .foregroundStyle(DS.Palette.accent)
-      } else {
-        Text("Round \(state.turnIndex + 1) • Updates at turn end")
+      VStack(alignment: .leading, spacing: DS.Spacing.s) {
+        Text("Scoring: \(game.settings.scoringSummary)")
           .font(DS.Typography.caption)
           .foregroundStyle(DS.Palette.subtext(scheme))
       }
+      .dsCard()
+      .padding(.horizontal, DS.Spacing.xl)
+    } else {
+      VStack(alignment: .leading, spacing: DS.Spacing.s) {
+        Text(game.title)
+          .font(DS.Typography.title)
+        Text("\(game.settings.activity.title) • \(game.settings.winCondition.title)")
+          .font(DS.Typography.body)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+
+        Divider().overlay(DS.Palette.separator(scheme))
+
+        ForEach(Array(rowsDesc.enumerated()), id: \.offset) { idx, row in
+          HStack {
+            Text("#\(idx + 1)")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .frame(width: 28, alignment: .leading)
+              .monospacedDigit()
+            Text(row.0.displayName)
+              .font(DS.Typography.body.weight(.semibold))
+            Spacer()
+            Text("\(row.1)")
+              .font(DS.Typography.body.weight(.semibold))
+              .monospacedDigit()
+          }
+          .foregroundStyle(row.0.id == meID ? DS.Palette.accent : DS.Palette.text(scheme))
+          if idx != rowsDesc.count - 1 {
+            Divider().overlay(DS.Palette.separator(scheme))
+          }
+        }
+
+        Text("Ends in \(timeRemainingText(to: endsAt, now: now)) • \(game.settings.scoringSummary)")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+      }
+      .dsCard()
+      .padding(.horizontal, DS.Spacing.xl)
     }
-    .dsCard()
-    .padding(.horizontal, DS.Spacing.xl)
+  }
+
+  private func defaultCheckpoints(maxScore: Int, activity: GameActivity) -> [GameCheckpoint] {
+    let fracs: [Double] = [0.25, 0.5, 0.75, 1.0]
+    return fracs.map { f in
+      let raw = Int((Double(maxScore) * f).rounded())
+      let rounded = roundForDisplay(raw, activity: activity)
+      return GameCheckpoint(
+        id: "\(f)",
+        progress: f,
+        label: checkpointLabel(value: rounded, activity: activity)
+      )
+    }
+  }
+
+  private func roundForDisplay(_ v: Int, activity: GameActivity) -> Int {
+    switch activity {
+    case .steps:
+      let step = 500
+      return max(step, (v / step) * step)
+    case .running, .cycling, .swimming:
+      return max(1, v)
+    case .strengthTraining, .yoga, .meditation:
+      return max(1, v)
+    }
+  }
+
+  private func checkpointLabel(value: Int, activity: GameActivity) -> String {
+    switch activity {
+    case .steps:
+      if value >= 10_000 { return "\(value / 1000)k" }
+      if value >= 1000 { return "\(value / 1000)k" }
+      return "\(value)"
+    default:
+      return "\(value)"
+    }
   }
 
   private func startAutoSyncLoop() async {
