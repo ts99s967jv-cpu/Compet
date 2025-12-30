@@ -7,6 +7,7 @@ struct ProfileView: View {
   @State private var trends: HealthTrendsSnapshot?
   @State private var isLoadingTrends: Bool = false
   @State private var showEditProfile: Bool = false
+  @State private var showFriends: Bool = false
 
   var body: some View {
     ScrollView {
@@ -71,6 +72,43 @@ struct ProfileView: View {
 
         FitnessEloCard(store: store, isRefreshing: $isRefreshingElo)
           .padding(.horizontal, DS.Spacing.xl)
+
+        DSSectionHeaderRow(title: "Friends", systemImage: "person.2")
+
+        VStack(alignment: .leading, spacing: DS.Spacing.s) {
+          HStack {
+            Text("Friends")
+              .font(DS.Typography.section)
+            Spacer()
+            Text("\(store.friends.count)")
+              .font(DS.Typography.body.weight(.semibold))
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .monospacedDigit()
+          }
+
+          Text("Search people, view profiles, and invite friends to games.")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+
+          Button {
+            showFriends = true
+          } label: {
+            HStack {
+              Image(systemName: "magnifyingglass")
+              Text("Find people")
+                .font(DS.Typography.body.weight(.semibold))
+              Spacer()
+              Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(DS.Palette.subtext(scheme))
+            }
+            .foregroundStyle(DS.Palette.text(scheme))
+            .padding(.vertical, DS.Spacing.xs)
+          }
+          .buttonStyle(.plain)
+        }
+        .dsCard()
+        .padding(.horizontal, DS.Spacing.xl)
 
         DSSectionHeaderRow(title: "Account", systemImage: "person.crop.circle")
 
@@ -163,6 +201,9 @@ struct ProfileView: View {
     .dsScreenBackground()
     .sheet(isPresented: $showEditProfile) {
       EditProfileSheet(store: store)
+    }
+    .sheet(isPresented: $showFriends) {
+      FriendsView(store: store)
     }
     .task {
       await loadTrends()
