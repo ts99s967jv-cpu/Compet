@@ -5,7 +5,12 @@ final class BackendFriendsService {
   private let store: AppStore
   private let backend: BackendClient
 
-  init(store: AppStore, backend: BackendClient = Backend.shared) {
+  init(store: AppStore) {
+    self.store = store
+    self.backend = Backend.shared
+  }
+
+  init(store: AppStore, backend: BackendClient) {
     self.store = store
     self.backend = backend
   }
