@@ -60,6 +60,9 @@ final class GameScoreSyncService {
     if let elim = game.elimination {
       return (elim.roundIndex, elim.roundStartedAt)
     }
+    if let lvl = game.levelVsLevel {
+      return (lvl.turnIndex, lvl.turnStartedAt)
+    }
     return (0, game.createdAt)
   }
 }

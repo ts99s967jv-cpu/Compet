@@ -69,11 +69,13 @@ struct ActiveGameDetailSheet: View {
     NavigationStack {
       ScrollView {
         VStack(alignment: .leading, spacing: DS.Spacing.l) {
-          if let game,
-             let elim = game.elimination,
-             (game.settings.winCondition == .eliminationLastManStanding
-              || game.settings.winCondition == .kingOfMonth
-              || game.settings.winCondition == .kingOfYear) {
+          if let game, game.settings.winCondition == .levelVsLevelGoal, let state = game.levelVsLevel {
+            levelVsLevelContent(game: game, state: state)
+          } else if let game,
+                    let elim = game.elimination,
+                    (game.settings.winCondition == .eliminationLastManStanding
+                     || game.settings.winCondition == .kingOfMonth
+                     || game.settings.winCondition == .kingOfYear) {
             VStack(alignment: .leading, spacing: DS.Spacing.s) {
               Text(game.title)
                 .font(DS.Typography.title)
@@ -227,9 +229,76 @@ struct ActiveGameDetailSheet: View {
       return "Monthly champion • Bottom removed weekly • Join anytime"
     case .kingOfYear:
       return "Yearly champion • Bottom removed monthly • Join anytime"
+    case .levelVsLevelGoal:
+      return "Level vs level • Beat yesterday’s score"
     default:
       return "Competition"
     }
+  }
+
+  @ViewBuilder
+  private func levelVsLevelContent(game: ActiveGame, state: LevelVsLevelState) -> some View {
+    let svc = ActiveGamesService(store: store)
+    let cutoff = state.turnStartedAt.addingTimeInterval(24 * 60 * 60)
+
+    VStack(alignment: .leading, spacing: DS.Spacing.s) {
+      Text(game.title)
+        .font(DS.Typography.title)
+      Text(subtitle(for: game))
+        .font(DS.Typography.body)
+        .foregroundStyle(DS.Palette.subtext(scheme))
+    }
+    .padding(.horizontal, DS.Spacing.xl)
+    .padding(.top, DS.Spacing.l)
+
+    VStack(alignment: .leading, spacing: DS.Spacing.s) {
+      Text("Today’s turn")
+        .font(DS.Typography.section)
+
+      let activeUserID = state.turnOrderUserIDs[safe: state.currentTurnPlayerIndex] ?? ""
+      let activeName = game.players.first(where: { $0.id == activeUserID })?.displayName ?? "Player"
+
+      Text("Up now: \(activeName)")
+        .font(DS.Typography.body.weight(.semibold))
+
+      Text("Target: \(state.currentTarget) • Ends in \(timeRemainingText(to: cutoff, now: now))")
+        .font(DS.Typography.caption)
+        .foregroundStyle(DS.Palette.subtext(scheme))
+
+      if let last = state.lastAchievedScore {
+        Text("Previous score: \(last) → you must beat it")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+      }
+
+      if let meID = store.profile?.id {
+        let myScore = svc.leaderboardPointsFor(activeGameID: game.id, userID: meID, roundIndex: state.turnIndex, seed: state.turnStartedAt)
+        Text("Your current score: \(myScore)")
+          .font(DS.Typography.caption.weight(.semibold))
+          .foregroundStyle(DS.Palette.subtext(scheme))
+          .monospacedDigit()
+      }
+    }
+    .dsCard()
+    .padding(.horizontal, DS.Spacing.xl)
+
+    VStack(alignment: .leading, spacing: DS.Spacing.s) {
+      Text("Result")
+        .font(DS.Typography.section)
+
+      if game.status == .finished {
+        let winner = state.winnerUserID.flatMap { id in game.players.first(where: { $0.id == id })?.displayName } ?? "—"
+        Text("Winner: \(winner)")
+          .font(DS.Typography.body.weight(.semibold))
+          .foregroundStyle(DS.Palette.accent)
+      } else {
+        Text("Round \(state.turnIndex + 1) • Updates at turn end")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+      }
+    }
+    .dsCard()
+    .padding(.horizontal, DS.Spacing.xl)
   }
 
   private func startAutoSyncLoop() async {

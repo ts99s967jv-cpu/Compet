@@ -36,11 +36,48 @@ final class ActiveGamesService {
     store.addActiveGame(game)
   }
 
+  /// Starts a head-to-head "level vs level" game.
+  /// Day 1: player 1 must reach the starting target.
+  /// Day 2: player 2 must beat day 1 score, etc. Game ends when a player fails.
+  func startLevelVsLevelGame(from publicGame: PublicGame, now: Date = Date()) {
+    guard publicGame.settings.winCondition == .levelVsLevelGoal else { return }
+    guard publicGame.players.count == 2 else { return }
+
+    let players = publicGame.players.map { $0.user }
+    let turnOrder = players.map(\.id)
+
+    let game = ActiveGame(
+      id: "ag_" + publicGame.id,
+      title: publicGame.title,
+      createdAt: now,
+      settings: publicGame.settings,
+      status: .active,
+      players: players,
+      elimination: nil,
+      levelVsLevel: LevelVsLevelState(
+        turnStartedAt: now,
+        turnIndex: 0,
+        turnOrderUserIDs: turnOrder,
+        currentTurnPlayerIndex: 0,
+        currentTarget: max(1, publicGame.settings.levelVsLevelStartingTarget),
+        lastAchievedScore: nil,
+        winnerUserID: nil,
+        loserUserID: nil
+      )
+    )
+    store.addActiveGame(game)
+  }
+
   /// Advances elimination-style games that have passed the cadence cutoff.
   /// Local prototype: the eliminated player is chosen by lowest deterministic "round points".
   func tick(now: Date = Date()) {
     for game in store.activeGames {
       guard game.status == .active else { continue }
+      if game.settings.winCondition == .levelVsLevelGoal {
+        tickLevelVsLevel(game: game, now: now)
+        continue
+      }
+
       guard var elim = game.elimination else { continue }
       guard isEliminationStyle(game.settings.winCondition) else { continue }
 
@@ -109,6 +146,52 @@ final class ActiveGamesService {
         store.updateActiveGame(updated)
       }
     }
+  }
+
+  private func tickLevelVsLevel(game: ActiveGame, now: Date) {
+    guard game.settings.winCondition == .levelVsLevelGoal else { return }
+    guard var state = game.levelVsLevel else { return }
+    guard game.players.count == 2 else { return }
+    guard state.winnerUserID == nil else { return }
+
+    // 24-hour turn windows from `turnStartedAt`.
+    let cutoff = state.turnStartedAt.addingTimeInterval(24 * 60 * 60)
+    guard now >= cutoff else { return }
+
+    // Resolve today's player score for the completed window.
+    let activeUserID = state.turnOrderUserIDs[safe: state.currentTurnPlayerIndex] ?? game.players.first?.id ?? ""
+    guard !activeUserID.isEmpty else { return }
+
+    // Prefer persisted HealthKit-synced score if available; otherwise use deterministic placeholder.
+    let seed = state.turnStartedAt
+    let score = leaderboardPointsFor(
+      activeGameID: game.id,
+      userID: activeUserID,
+      roundIndex: state.turnIndex,
+      seed: seed
+    )
+
+    var updated = game
+
+    if score >= state.currentTarget {
+      // Success → next player must beat this score.
+      state.lastAchievedScore = score
+      state.turnIndex += 1
+      state.turnStartedAt = cutoff
+      state.currentTurnPlayerIndex = (state.currentTurnPlayerIndex + 1) % max(1, state.turnOrderUserIDs.count)
+      state.currentTarget = score + 1
+      updated.levelVsLevel = state
+      store.updateActiveGame(updated)
+      return
+    }
+
+    // Failed → game ends; winner is the previous player.
+    let prevIndex = (state.currentTurnPlayerIndex - 1 + state.turnOrderUserIDs.count) % max(1, state.turnOrderUserIDs.count)
+    state.loserUserID = activeUserID
+    state.winnerUserID = state.turnOrderUserIDs[safe: prevIndex]
+    updated.status = .finished
+    updated.levelVsLevel = state
+    store.updateActiveGame(updated)
   }
 
   func simulateEndOfRound(gameID: String) {

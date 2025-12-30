@@ -16,6 +16,8 @@ final class PublicGamesService {
     switch settings.winCondition {
     case .eliminationLastManStanding:
       cap = 12
+    case .levelVsLevelGoal:
+      cap = 2
     case .kingOfMonth, .kingOfYear:
       cap = 100
     default:
@@ -70,8 +72,12 @@ final class PublicGamesService {
     }
 
     // If this lobby is an elimination-style game and it just started, spawn an ActiveGame.
-    if game.status == .started, isEliminationStyle(game.settings.winCondition) {
-      ActiveGamesService(store: store).startEliminationStyleGame(from: game)
+    if game.status == .started {
+      if isEliminationStyle(game.settings.winCondition) {
+        ActiveGamesService(store: store).startEliminationStyleGame(from: game)
+      } else if game.settings.winCondition == .levelVsLevelGoal {
+        ActiveGamesService(store: store).startLevelVsLevelGame(from: game)
+      }
     }
   }
 
@@ -109,6 +115,8 @@ final class PublicGamesService {
 
     if isEliminationStyle(game.settings.winCondition) {
       ActiveGamesService(store: store).startEliminationStyleGame(from: game)
+    } else if game.settings.winCondition == .levelVsLevelGoal {
+      ActiveGamesService(store: store).startLevelVsLevelGame(from: game)
     }
   }
 
