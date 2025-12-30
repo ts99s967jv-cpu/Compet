@@ -35,13 +35,13 @@ struct DSFitnessDoodleBackground: View {
             let y = CGFloat(r) * step + jy
 
             let color = (hash3(c, r, 5) % 3 == 0) ? accent : base
-            let symbol = Image(systemName: name)
+            context.opacity = 1
+            let text = Text(Image(systemName: name))
               .font(.system(size: 28, weight: .regular))
               .symbolRenderingMode(.hierarchical)
-
-            context.opacity = 1
-            let resolvedMain = context.resolve(symbol.foregroundStyle(color))
-            context.draw(resolvedMain, at: CGPoint(x: x, y: y))
+              .foregroundStyle(color)
+            let resolvedMain = context.resolve(text)
+            context.draw(resolvedMain, at: CGPoint(x: x, y: y), anchor: .center)
 
             // Add a smaller secondary doodle sometimes.
             if hash3(c, r, 6) % 4 == 0 {
@@ -49,11 +49,12 @@ struct DSFitnessDoodleBackground: View {
               let name2 = symbols[idx2]
               let x2 = x + CGFloat((hash3(c, r, 8) % 31) - 15)
               let y2 = y + CGFloat((hash3(c, r, 9) % 31) - 15)
-              let symbol2 = Image(systemName: name2)
+              let text2 = Text(Image(systemName: name2))
                 .font(.system(size: 18, weight: .regular))
                 .symbolRenderingMode(.hierarchical)
-              let resolved2 = context.resolve(symbol2.foregroundStyle(base.opacity(0.9)))
-              context.draw(resolved2, at: CGPoint(x: x2, y: y2))
+                .foregroundStyle(base.opacity(0.9))
+              let resolved2 = context.resolve(text2)
+              context.draw(resolved2, at: CGPoint(x: x2, y: y2), anchor: .center)
             }
 
             // Apply transforms via a small group (rotation/scale).
@@ -63,7 +64,7 @@ struct DSFitnessDoodleBackground: View {
               context.rotate(by: rot)
               context.scaleBy(x: s, y: s)
               context.translateBy(x: -x, y: -y)
-              context.draw(resolvedMain, at: CGPoint(x: x, y: y))
+              context.draw(resolvedMain, at: CGPoint(x: x, y: y), anchor: .center)
               context.restoreGState()
             }
           }
