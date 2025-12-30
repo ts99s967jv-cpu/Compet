@@ -84,8 +84,7 @@ struct AddHabitFlowSheet: View {
 
   private var recommendedSection: some View {
     VStack(alignment: .leading, spacing: DS.Spacing.m) {
-      Text("Recommended")
-        .dsSectionHeader()
+      DSSectionHeaderRow(title: "Recommended", systemImage: "sparkles")
 
       VStack(spacing: DS.Spacing.m) {
         ForEach(HabitTemplateID.allCases) { template in
@@ -101,8 +100,7 @@ struct AddHabitFlowSheet: View {
 
   private var customSection: some View {
     VStack(alignment: .leading, spacing: DS.Spacing.m) {
-      Text("Custom")
-        .dsSectionHeader()
+      DSSectionHeaderRow(title: "Custom", systemImage: "pencil.and.outline")
 
       VStack(alignment: .leading, spacing: DS.Spacing.s) {
         Text("Name")

@@ -35,8 +35,7 @@ struct CompetitionsView: View {
 
           VStack(spacing: DS.Spacing.m) {
             if !championshipEvents.isEmpty {
-              Text("Championship events")
-                .dsSectionHeader()
+              DSSectionHeaderRow(title: "Championship events", systemImage: "crown")
 
               ForEach(championshipEvents) { game in
                 PublicGameCard(game: game, variant: .systemEvent) {
@@ -47,8 +46,7 @@ struct CompetitionsView: View {
             }
           }
 
-          Text("Your games")
-            .dsSectionHeader()
+          DSSectionHeaderRow(title: "Your games", systemImage: "trophy")
 
           VStack(spacing: DS.Spacing.m) {
             let comps = competitionCards
@@ -75,8 +73,7 @@ struct CompetitionsView: View {
           }
 
           // Public lobbies (non-system), with filters.
-          Text("Public games")
-            .dsSectionHeader()
+          DSSectionHeaderRow(title: "Public games", systemImage: "globe")
 
           VStack(spacing: DS.Spacing.m) {
             let meID = store.profile?.id ?? ""
@@ -96,8 +93,9 @@ struct CompetitionsView: View {
             let discover = filtered.filter { meID.isEmpty ? true : !$0.contains(userID: meID) }
 
             HStack(alignment: .firstTextBaseline) {
-              Text("Browse")
+              Label("Browse", systemImage: "magnifyingglass")
                 .font(DS.Typography.section)
+                .foregroundStyle(DS.Palette.text(scheme))
               Spacer()
               Menu {
                 Picker("Sort", selection: $browseSort) {
@@ -158,8 +156,7 @@ struct CompetitionsView: View {
                 .padding(.horizontal, DS.Spacing.xl)
             } else {
               if !joined.isEmpty {
-                Text("Joined")
-                  .dsSectionHeader()
+                DSSectionHeaderRow(title: "Joined", systemImage: "checkmark.circle")
                 ForEach(sortedPublic(joined)) { game in
                   PublicGameCard(game: game, variant: .joined) {
                     selectedPublicGameID = game.id
@@ -169,8 +166,7 @@ struct CompetitionsView: View {
               }
 
               if !discover.isEmpty {
-                Text("Discover")
-                  .dsSectionHeader()
+                DSSectionHeaderRow(title: "Discover", systemImage: "sparkle.magnifyingglass")
                 ForEach(sortedPublic(discover).filter { $0.status == .open }) { game in
                   PublicGameCard(game: game, variant: .discover) {
                     selectedPublicGameID = game.id
@@ -180,8 +176,7 @@ struct CompetitionsView: View {
               }
 
               if !privateLobbies.isEmpty {
-                Text("Private lobbies")
-                  .dsSectionHeader()
+                DSSectionHeaderRow(title: "Private lobbies", systemImage: "lock")
                 ForEach(privateLobbies.sorted { $0.createdAt > $1.createdAt }) { game in
                   PublicGameCard(game: game, variant: .privateLobby) {
                     selectedPublicGameID = game.id
@@ -746,6 +741,7 @@ private struct CreatePublicGameSheet: View {
   @State private var maxPlayers: Int = 10
   @State private var settings: GameSettings = .default(mode: .groupFriends)
   @State private var visibility: PublicGameVisibility = .public
+  @State private var selectedTemplateID: String? = nil
 
   var body: some View {
     NavigationStack {
@@ -755,6 +751,22 @@ private struct CreatePublicGameSheet: View {
             .font(DS.Typography.title)
             .padding(.horizontal, DS.Spacing.xl)
             .padding(.top, DS.Spacing.l)
+
+          DSSectionHeaderRow(title: "Templates", systemImage: "square.grid.2x2")
+
+          LazyVGrid(columns: [GridItem(.flexible(), spacing: DS.Spacing.m), GridItem(.flexible(), spacing: DS.Spacing.m)], spacing: DS.Spacing.m) {
+            ForEach(gameTemplates, id: \.id) { t in
+              GameTemplateTile(template: t, isSelected: selectedTemplateID == t.id) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                  selectedTemplateID = t.id
+                  title = t.suggestedTitle
+                  settings = t.settings
+                  maxPlayers = min(maxPlayers, playerCap(settings))
+                }
+              }
+            }
+          }
+          .padding(.horizontal, DS.Spacing.xl)
 
           VStack(alignment: .leading, spacing: DS.Spacing.s) {
             Text("Details")
@@ -801,11 +813,7 @@ private struct CreatePublicGameSheet: View {
           .padding(.horizontal, DS.Spacing.xl)
 
           // Reuse existing settings UI
-          VStack(alignment: .leading, spacing: DS.Spacing.s) {
-            Text("Settings")
-              .font(DS.Typography.section)
-          }
-          .padding(.horizontal, DS.Spacing.xl)
+          DSSectionHeaderRow(title: "Settings", systemImage: "slider.horizontal.3")
 
           VStack(spacing: 0) {
             GameSettingsForm(settings: $settings, availableModes: [.groupFriends], inventory: store.profile?.inventory)
@@ -841,11 +849,170 @@ private struct CreatePublicGameSheet: View {
   private func playerCap(_ settings: GameSettings) -> Int {
     settings.winCondition == .eliminationLastManStanding ? 12 : 50
   }
+
+  private var gameTemplates: [GameTemplate] {
+    [
+      GameTemplate(
+        id: "steps_sprint",
+        title: "Steps sprint",
+        subtitle: "Simple and motivating — steps win.",
+        systemImage: "figure.walk",
+        suggestedTitle: "Steps sprint",
+        settings: {
+          var s = GameSettings.default(mode: .groupFriends)
+          s.activity = .steps
+          s.winCondition = .mostPointsAtEnd
+          s.scoringMetrics = [.steps]
+          s.timeLimitDays = 7
+          return s
+        }()
+      ),
+      GameTemplate(
+        id: "burn_week",
+        title: "Burn week",
+        subtitle: "Steps + active energy combined.",
+        systemImage: "flame",
+        suggestedTitle: "Burn week",
+        settings: {
+          var s = GameSettings.default(mode: .groupFriends)
+          s.activity = .steps
+          s.winCondition = .mostPointsAtEnd
+          s.scoringMetrics = [.steps, .activeEnergyBurned]
+          s.timeLimitDays = 7
+          return s
+        }()
+      ),
+      GameTemplate(
+        id: "phone_only",
+        title: "Phone-only",
+        subtitle: "Fair play — iPhone samples only.",
+        systemImage: "iphone",
+        suggestedTitle: "Phone-only steps",
+        settings: {
+          var s = GameSettings.default(mode: .groupFriends)
+          s.phoneOnlyMetrics = true
+          s.scoringMetrics = [.steps, .activeEnergyBurned]
+          s.timeLimitDays = 7
+          return s
+        }()
+      ),
+      GameTemplate(
+        id: "elimination",
+        title: "Elimination",
+        subtitle: "Bottom player removed daily.",
+        systemImage: "person.2.slash",
+        suggestedTitle: "Elimination ladder",
+        settings: {
+          var s = GameSettings.default(mode: .groupFriends)
+          s.winCondition = .eliminationLastManStanding
+          s.scoringMetrics = [.steps, .activeEnergyBurned]
+          s.timeLimitDays = 14
+          return s
+        }()
+      ),
+      GameTemplate(
+        id: "level_vs_level",
+        title: "Level vs level",
+        subtitle: "Daily beat-the-score duel.",
+        systemImage: "arrow.up.right.circle",
+        suggestedTitle: "Beat the score",
+        settings: {
+          var s = GameSettings.default(mode: .groupFriends)
+          s.winCondition = .levelVsLevelGoal
+          s.scoringMetrics = [.steps]
+          s.levelVsLevelStartingTarget = 10_000
+          s.timeLimitDays = 14
+          return s
+        }()
+      ),
+      GameTemplate(
+        id: "sleep_focus",
+        title: "Sleep focus",
+        subtitle: "Sleep score + energy.",
+        systemImage: "bed.double",
+        suggestedTitle: "Sleep focus",
+        settings: {
+          var s = GameSettings.default(mode: .groupFriends)
+          s.activity = .yoga
+          s.winCondition = .mostPointsAtEnd
+          s.scoringMetrics = [.sleepScore, .activeEnergyBurned]
+          s.timeLimitDays = 7
+          return s
+        }()
+      ),
+    ]
+  }
+}
+
+private struct GameTemplate: Hashable {
+  let id: String
+  let title: String
+  let subtitle: String
+  let systemImage: String
+  let suggestedTitle: String
+  let settings: GameSettings
+}
+
+private struct GameTemplateTile: View {
+  @Environment(\.colorScheme) private var scheme
+  let template: GameTemplate
+  let isSelected: Bool
+  let tapped: () -> Void
+
+  var body: some View {
+    Button(action: tapped) {
+      VStack(alignment: .leading, spacing: DS.Spacing.s) {
+        HStack {
+          Circle()
+            .fill(DS.Palette.accent.opacity(isSelected ? 0.22 : 0.14))
+            .frame(width: 34, height: 34)
+            .overlay(
+              Image(systemName: template.systemImage)
+                .foregroundStyle(DS.Palette.accent)
+                .font(.system(size: 14, weight: .semibold))
+            )
+          Spacer()
+          if isSelected {
+            Image(systemName: "checkmark.circle.fill")
+              .foregroundStyle(DS.Palette.accent)
+              .contentTransition(.symbolEffect(.replace))
+          }
+        }
+
+        Text(template.title)
+          .font(DS.Typography.section)
+          .foregroundStyle(DS.Palette.text(scheme))
+          .lineLimit(1)
+
+        Text(template.subtitle)
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+          .lineLimit(2)
+          .fixedSize(horizontal: false, vertical: true)
+
+        Spacer(minLength: 0)
+      }
+      .padding(DS.Spacing.l)
+      .background(
+        RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+          .fill(DS.Palette.surface(scheme))
+      )
+      .overlay(
+        RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+          .stroke(isSelected ? DS.Palette.accent.opacity(0.65) : DS.Palette.separator(scheme), lineWidth: isSelected ? 1.5 : 1)
+      )
+      .shadow(color: DS.Shadow.card(for: scheme).color.opacity(isSelected ? 1 : 0.7),
+              radius: DS.Shadow.card(for: scheme).radius,
+              x: 0,
+              y: DS.Shadow.card(for: scheme).y)
+    }
+    .buttonStyle(.plain)
+  }
 }
 
 #Preview("Competitions") {
   let store = AppStore(kv: InMemoryStore())
-  store.account = Account(appleUserID: "preview", createdAt: .now)
+  store.account = Account(userID: "preview@example.com", email: "preview@example.com", username: "preview", createdAt: .now)
   store.profile = UserProfile(
     id: "preview",
     displayName: "Preview",

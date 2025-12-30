@@ -18,8 +18,7 @@ struct ProfileView: View {
         ProfileHabitsSection(store: store)
           .padding(.horizontal, DS.Spacing.xl)
 
-        Text("Health stats")
-          .dsSectionHeader()
+        DSSectionHeaderRow(title: "Health stats", systemImage: "heart.text.square")
 
         VStack(spacing: DS.Spacing.m) {
           HealthStatCard(title: "Steps (today)", value: formatInt(stepsToday), subtitle: isLoadingTrends ? "Loading…" : "Today", icon: "figure.walk")
@@ -30,8 +29,7 @@ struct ProfileView: View {
         .padding(.horizontal, DS.Spacing.xl)
 
         if let trends {
-          Text("Trends")
-            .dsSectionHeader()
+          DSSectionHeaderRow(title: "Trends", systemImage: "chart.line.uptrend.xyaxis")
 
           VStack(spacing: DS.Spacing.m) {
             TrendPanel(
@@ -69,14 +67,12 @@ struct ProfileView: View {
           .padding(.horizontal, DS.Spacing.xl)
         }
 
-        Text("Fitness ELO")
-          .dsSectionHeader()
+        DSSectionHeaderRow(title: "Fitness ELO", systemImage: "gauge.with.dots.needle.67percent")
 
         FitnessEloCard(store: store, isRefreshing: $isRefreshingElo)
           .padding(.horizontal, DS.Spacing.xl)
 
-        Text("Account")
-          .dsSectionHeader()
+        DSSectionHeaderRow(title: "Account", systemImage: "person.crop.circle")
 
         VStack(alignment: .leading, spacing: DS.Spacing.s) {
           Button {
@@ -110,8 +106,7 @@ struct ProfileView: View {
         .dsCard()
         .padding(.horizontal, DS.Spacing.xl)
 
-        Text("Appearance")
-          .dsSectionHeader()
+        DSSectionHeaderRow(title: "Appearance", systemImage: "circle.lefthalf.filled")
 
         VStack(alignment: .leading, spacing: DS.Spacing.s) {
           Text("Theme")
@@ -128,8 +123,7 @@ struct ProfileView: View {
         .dsCard()
         .padding(.horizontal, DS.Spacing.xl)
 
-        Text("Fairness")
-          .dsSectionHeader()
+        DSSectionHeaderRow(title: "Fairness", systemImage: "checkmark.shield")
 
         if store.profile != nil {
           VStack(alignment: .leading, spacing: DS.Spacing.s) {
@@ -149,8 +143,7 @@ struct ProfileView: View {
           .padding(.horizontal, DS.Spacing.xl)
         }
 
-        Text("Power-ups")
-          .dsSectionHeader()
+        DSSectionHeaderRow(title: "Power-ups", systemImage: "sparkles")
 
         VStack(spacing: DS.Spacing.m) {
           if let profile = store.profile {

@@ -17,8 +17,7 @@ struct TodayView: View {
 
         let breakHabits = store.activeHabits.filter { $0.behavior == .breakHabit }
         if !breakHabits.isEmpty {
-          Text("Break habits")
-            .dsSectionHeader()
+          DSSectionHeaderRow(title: "Break habits", systemImage: "xmark.circle")
 
           VStack(spacing: DS.Spacing.m) {
             ForEach(breakHabits) { habit in
@@ -33,8 +32,7 @@ struct TodayView: View {
           .padding(.horizontal, DS.Spacing.xl)
         }
 
-        Text("Today’s habits")
-          .dsSectionHeader()
+        DSSectionHeaderRow(title: "Today’s habits", systemImage: "checkmark.circle")
 
         VStack(spacing: DS.Spacing.m) {
           let buildHabits = store.activeHabits.filter { $0.behavior != .breakHabit }
@@ -58,8 +56,7 @@ struct TodayView: View {
         }
         .padding(.horizontal, DS.Spacing.xl)
 
-        Text("Running games")
-          .dsSectionHeader()
+        DSSectionHeaderRow(title: "Running games", systemImage: "trophy")
 
         VStack(spacing: DS.Spacing.m) {
           let running = store.activeGames.filter { $0.status == .active }

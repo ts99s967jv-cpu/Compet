@@ -107,7 +107,13 @@ private struct DSBackgroundModifier: ViewModifier {
 
   func body(content: Content) -> some View {
     content
-      .background(DS.Palette.background(scheme))
+      .background(
+        ZStack {
+          DS.Palette.background(scheme)
+          DSFitnessDoodleBackground()
+            .opacity(scheme == .dark ? 0.55 : 0.45)
+        }
+      )
       .foregroundStyle(DS.Palette.text(scheme))
   }
 }
