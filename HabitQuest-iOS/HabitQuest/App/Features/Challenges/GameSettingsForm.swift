@@ -23,11 +23,7 @@ struct GameSettingsForm: View {
     }
 
     Section("Visual map") {
-      Picker("Map style", selection: $settings.mapStyle) {
-        ForEach(GameMapStyle.allCases) { s in
-          Text(s.title).tag(s)
-        }
-      }
+      MapStyleCarousel(style: $settings.mapStyle, activity: settings.activity)
       Text("This controls the illustrated in-game track (Steps → grassy trail, Cycling → road, Swimming → pool).")
         .font(.footnote)
         .foregroundStyle(.secondary)
@@ -170,6 +166,71 @@ struct GameSettingsForm: View {
     case .steps: 500
     case .running, .cycling, .swimming: 1
     case .strengthTraining, .yoga, .meditation: 5
+    }
+  }
+}
+
+private struct MapStyleCarousel: View {
+  @Binding var style: GameMapStyle
+  let activity: GameActivity
+
+  private let all = GameMapStyle.allCases
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(spacing: 12) {
+        Button {
+          step(-1)
+        } label: {
+          Image(systemName: "chevron.left")
+            .frame(width: 32, height: 32)
+        }
+        .buttonStyle(.borderless)
+        .disabled(all.count < 2)
+
+        GameMapStylePreview(style: style, activity: activity)
+          .frame(height: 120)
+          .frame(maxWidth: .infinity)
+
+        Button {
+          step(1)
+        } label: {
+          Image(systemName: "chevron.right")
+            .frame(width: 32, height: 32)
+        }
+        .buttonStyle(.borderless)
+        .disabled(all.count < 2)
+      }
+
+      HStack {
+        Text(style.title)
+          .font(.subheadline.weight(.semibold))
+        Spacer()
+        if style == .automatic {
+          Text("Auto for \(activity.title)")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
+      }
+    }
+    .contentShape(Rectangle())
+    .gesture(
+      DragGesture(minimumDistance: 16)
+        .onEnded { value in
+          if value.translation.width < -20 { step(1) }
+          if value.translation.width > 20 { step(-1) }
+        }
+    )
+  }
+
+  private func step(_ delta: Int) {
+    guard let idx = all.firstIndex(of: style) else {
+      style = .automatic
+      return
+    }
+    let next = (idx + delta + all.count) % all.count
+    withAnimation(.easeInOut(duration: 0.22)) {
+      style = all[next]
     }
   }
 }

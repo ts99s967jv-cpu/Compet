@@ -14,6 +14,33 @@ enum ActiveGamePrimaryView: String, CaseIterable, Identifiable {
   }
 }
 
+/// Small preview used in game setup UI.
+struct GameMapStylePreview: View {
+  let style: GameMapStyle
+  let activity: GameActivity
+
+  var body: some View {
+    let resolved = style.resolved(for: activity)
+    GameMapTrack(
+      style: resolved,
+      checkpoints: [
+        GameCheckpoint(id: "c1", progress: 0.25, label: "25%"),
+        GameCheckpoint(id: "c2", progress: 0.5, label: "50%"),
+        GameCheckpoint(id: "c3", progress: 0.75, label: "75%"),
+      ],
+      players: [
+        GameMapPlayer(id: "p1", displayName: "You", progress: 0.42, isMe: true),
+        GameMapPlayer(id: "p2", displayName: "Alex", progress: 0.68, isMe: false),
+      ]
+    )
+    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous))
+    .overlay(
+      RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous)
+        .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+    )
+  }
+}
+
 /// Illustrated “track” with player bubbles positioned by score.
 struct GameMapTrackCard: View {
   @Environment(\.colorScheme) private var scheme
