@@ -18,6 +18,8 @@ final class LocalOnlyBackendClient: BackendClient {
 
   func signUp(email: String, password: String) async throws -> String { throw NSError(domain: "Backend", code: 1) }
   func signIn(email: String, password: String) async throws -> String { throw NSError(domain: "Backend", code: 1) }
+  func sendMagicLink(email: String, redirectTo: URL) async throws { throw NSError(domain: "Backend", code: 1) }
+  func handleAuthCallback(url: URL) async throws -> String { throw NSError(domain: "Backend", code: 1) }
   func signOut() async {}
 
   func fetchMyProfile() async throws -> UserProfile? { nil }

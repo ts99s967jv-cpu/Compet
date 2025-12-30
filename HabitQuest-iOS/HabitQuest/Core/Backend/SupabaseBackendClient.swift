@@ -48,6 +48,20 @@ final class SupabaseBackendClient: BackendClient {
     try? await client.auth.signOut()
   }
 
+  func sendMagicLink(email: String, redirectTo: URL) async throws {
+    // Sends a magic link (passwordless sign-in) to email.
+    // Note: exact API name may vary slightly by supabase-swift version.
+    _ = try await client.auth.signInWithOTP(email: email, redirectTo: redirectTo)
+  }
+
+  func handleAuthCallback(url: URL) async throws -> String {
+    // Parses the auth callback and sets the session for the client.
+    // Note: exact API name may vary slightly by supabase-swift version.
+    let session = try client.auth.session(from: url)
+    _ = try await client.auth.setSession(accessToken: session.accessToken, refreshToken: session.refreshToken)
+    return session.user.id.uuidString
+  }
+
   // MARK: Profile
 
   private struct ProfileRow: Codable {

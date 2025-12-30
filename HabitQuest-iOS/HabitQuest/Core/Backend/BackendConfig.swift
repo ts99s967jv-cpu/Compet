@@ -13,6 +13,12 @@ enum BackendConfig {
     return s
   }
 
+  static var supabaseRedirectURL: URL? {
+    guard let s = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_REDIRECT_URL") as? String,
+          let url = URL(string: s), !s.isEmpty else { return nil }
+    return url
+  }
+
   static var isSupabaseConfigured: Bool {
     supabaseURL != nil && (supabaseAnonKey?.isEmpty == false)
   }

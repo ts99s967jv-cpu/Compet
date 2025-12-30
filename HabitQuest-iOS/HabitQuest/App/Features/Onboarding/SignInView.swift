@@ -9,6 +9,8 @@ struct SignInView: View {
   @State private var password: String = ""
   @State private var mode: AuthMode = .signUp
   @State private var isLoading: Bool = false
+  @State private var useMagicLinkForLogin: Bool = true
+  @State private var infoMessage: String?
 
   private enum AuthMode: String, CaseIterable, Identifiable {
     case signUp
@@ -74,19 +76,25 @@ struct SignInView: View {
             )
         }
 
-        SecureField("Password", text: $password)
-          .textInputAutocapitalization(.never)
-          .autocorrectionDisabled()
-          .textContentType(mode == .signUp ? .newPassword : .password)
-          .padding(DS.Spacing.l)
-          .background(
-            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
-              .fill(DS.Palette.surface(scheme))
-          )
-          .overlay(
-            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
-              .stroke(DS.Palette.separator(scheme), lineWidth: 1)
-          )
+        if mode == .signIn {
+          Toggle("Use magic link", isOn: $useMagicLinkForLogin)
+        }
+
+        if mode == .signUp || (mode == .signIn && !useMagicLinkForLogin) {
+          SecureField("Password", text: $password)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .textContentType(mode == .signUp ? .newPassword : .password)
+            .padding(DS.Spacing.l)
+            .background(
+              RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+                .fill(DS.Palette.surface(scheme))
+            )
+            .overlay(
+              RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+                .stroke(DS.Palette.separator(scheme), lineWidth: 1)
+            )
+        }
 
         Button {
           Task { await submit() }
@@ -103,6 +111,12 @@ struct SignInView: View {
           Text(errorMessage)
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.danger)
+        }
+
+        if let infoMessage {
+          Text(infoMessage)
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
         }
 
         if !BackendConfig.isSupabaseConfigured {
@@ -122,6 +136,7 @@ struct SignInView: View {
 
   private func validate() -> (email: String, username: String, password: String)? {
     errorMessage = nil
+    infoMessage = nil
     let e = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     let u = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     let p = password.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -136,9 +151,11 @@ struct SignInView: View {
         return
       }
     }
-    guard p.count >= 8 else {
-      errorMessage = "Password must be at least 8 characters."
-      return
+    if mode == .signUp || (mode == .signIn && !useMagicLinkForLogin) {
+      guard isPasswordValid(p) else {
+        errorMessage = "Password must be 8+ chars and include upper, lower, number, and symbol."
+        return
+      }
     }
     return (e, u, p)
   }
@@ -183,7 +200,17 @@ struct SignInView: View {
         )
         try await Backend.shared.upsertMyProfile(profile)
       case .signIn:
-        userID = try await Backend.shared.signIn(email: v.email, password: v.password)
+        if useMagicLinkForLogin {
+          guard let redirect = BackendConfig.supabaseRedirectURL else {
+            errorMessage = "Missing SUPABASE_REDIRECT_URL."
+            return
+          }
+          try await Backend.shared.sendMagicLink(email: v.email, redirectTo: redirect)
+          infoMessage = "Check your email for a magic link to finish logging in."
+          return
+        } else {
+          userID = try await Backend.shared.signIn(email: v.email, password: v.password)
+        }
       }
 
       let fetchedProfile = try await Backend.shared.fetchMyProfile()
@@ -200,6 +227,15 @@ struct SignInView: View {
     } catch {
       errorMessage = "Sign in failed. Check your credentials and Supabase setup."
     }
+  }
+
+  private func isPasswordValid(_ p: String) -> Bool {
+    guard p.count >= 8 else { return false }
+    let hasUpper = p.contains(where: { $0.isUppercase })
+    let hasLower = p.contains(where: { $0.isLowercase })
+    let hasDigit = p.contains(where: { $0.isNumber })
+    let hasSymbol = p.contains(where: { !($0.isLetter || $0.isNumber) })
+    return hasUpper && hasLower && hasDigit && hasSymbol
   }
 }
 
