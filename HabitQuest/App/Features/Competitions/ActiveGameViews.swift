@@ -70,7 +70,9 @@ struct ActiveGameDetailSheet: View {
     NavigationStack {
       ScrollView {
         VStack(alignment: .leading, spacing: DS.Spacing.l) {
-          if let game, game.settings.winCondition == .levelVsLevelGoal, let state = game.levelVsLevel {
+          if game == nil {
+            missingActiveGameContent
+          } else if let game, game.settings.winCondition == .levelVsLevelGoal, let state = game.levelVsLevel {
             levelVsLevelContent(game: game, state: state)
           } else if let game,
                     let elim = game.elimination,
@@ -123,6 +125,48 @@ struct ActiveGameDetailSheet: View {
       }
     }
     .task { await startAutoSyncLoop() }
+  }
+
+  private var missingActiveGameContent: some View {
+    VStack(alignment: .leading, spacing: DS.Spacing.m) {
+      HStack(spacing: 12) {
+        Circle()
+          .fill(DS.Palette.accent.opacity(0.16))
+          .frame(width: 44, height: 44)
+          .overlay(
+            Image(systemName: "checkmark.circle")
+              .foregroundStyle(DS.Palette.accent)
+          )
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text("This game is no longer available")
+            .font(DS.Typography.section)
+          Text("It may have ended, or you may have left it.")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+        Spacer()
+      }
+
+      Button {
+        dismiss()
+      } label: {
+        Text("Close")
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, DS.Spacing.m)
+      }
+      .buttonStyle(.borderedProminent)
+      .tint(DS.Palette.accent)
+    }
+    .dsCard()
+    .padding(.horizontal, DS.Spacing.xl)
+    .padding(.top, DS.Spacing.l)
+    .onAppear {
+      // If the backing game vanishes while this sheet is visible, auto-close.
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        dismiss()
+      }
+    }
   }
 
   private func subtitle(for game: ActiveGame) -> String {

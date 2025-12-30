@@ -685,6 +685,7 @@ private struct PublicGameDetailSheet: View {
                 let svc = PublicGamesService(store: store)
                 if isIn {
                   svc.leave(gameID: game.id)
+                  dismiss()
                 } else {
                   svc.join(gameID: game.id)
                 }
@@ -705,6 +706,46 @@ private struct PublicGameDetailSheet: View {
                 .font(DS.Typography.caption)
                 .foregroundStyle(DS.Palette.subtext(scheme))
                 .padding(.horizontal, DS.Spacing.xl)
+            }
+          } else {
+            VStack(alignment: .leading, spacing: DS.Spacing.m) {
+              HStack(spacing: 12) {
+                Circle()
+                  .fill(DS.Palette.accent.opacity(0.16))
+                  .frame(width: 44, height: 44)
+                  .overlay(
+                    Image(systemName: "door.left.hand.open")
+                      .foregroundStyle(DS.Palette.accent)
+                  )
+
+                VStack(alignment: .leading, spacing: 2) {
+                  Text("You left this game")
+                    .font(DS.Typography.section)
+                  Text("Returning you to Competitions.")
+                    .font(DS.Typography.caption)
+                    .foregroundStyle(DS.Palette.subtext(scheme))
+                }
+                Spacer()
+              }
+
+              Button {
+                dismiss()
+              } label: {
+                Text("Close")
+                  .frame(maxWidth: .infinity)
+                  .padding(.vertical, DS.Spacing.m)
+              }
+              .buttonStyle(.borderedProminent)
+              .tint(DS.Palette.accent)
+            }
+            .dsCard()
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.top, DS.Spacing.l)
+            .onAppear {
+              // Avoid blank sheet if the game disappears after leaving.
+              DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                dismiss()
+              }
             }
           }
 
