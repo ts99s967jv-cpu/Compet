@@ -244,7 +244,7 @@ private struct HabitTodayCard: View {
           }
         }
 
-        if case .target(_, let unit, let period, let target) = habit.goal {
+        if case .target(_, let unit, _, let target) = habit.goal {
           let progress = store.habitProgressInCurrentPeriod(habit, now: now) ?? 0
           ProgressView(value: min(1, progress / max(0.0001, target))) {
             EmptyView()

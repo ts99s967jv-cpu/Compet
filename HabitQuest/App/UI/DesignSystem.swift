@@ -12,6 +12,11 @@ enum DS {
   }
 
   enum Radius {
+    /// Small/medium/large radii for inner elements.
+    /// Keep `l` aligned with `card` so clipped content matches card rounding.
+    static let s: CGFloat = 12
+    static let m: CGFloat = 14
+    static let l: CGFloat = 18
     static let card: CGFloat = 18
     static let pill: CGFloat = 999
   }
