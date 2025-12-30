@@ -79,6 +79,7 @@
 		8F3C7004E44BDBD41B51B638 /* BackendFriendsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C15B023E099DDEB49DFDC21 /* BackendFriendsService.swift */; };
 		402422E010E746B59A5A1C41 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 67AE00C3F693499097C20F44 /* Assets.xcassets */; };
 		7860F51FA762421D8E96ADA3 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A7883B5B95F488895B98BFA /* HealthKit.framework */; };
+		D39DA99C55D187160498ED1F /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 6C671CA7BDAD543A7BC25871 /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -166,6 +167,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7860F51FA762421D8E96ADA3 /* HealthKit.framework in Frameworks */,
+				D39DA99C55D187160498ED1F /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -272,6 +274,9 @@
 			buildRules = ();
 			dependencies = ();
 			name = HabitQuest;
+			packageProductDependencies = (
+				6C671CA7BDAD543A7BC25871 /* Supabase */,
+			);
 			productName = HabitQuest;
 			productReference = 82235C322F7B4E08AF299224 /* HabitQuest.app */;
 			productType = "com.apple.product-type.application";
@@ -294,6 +299,9 @@
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			mainGroup = A87CA015C0404539882C8452;
+			packageReferences = (
+				107065CEE468B1FB5EF0F736 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			productRefGroup = 3EF0BDCFC846441DAAFABDD5;
 			projectDirPath = "";
 			projectRoot = "";
@@ -398,14 +406,33 @@
 /* Begin XCBuildConfiguration section */
 		7281449BE14845FC9BEF2275 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ANALYZER_NONNULL = YES; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES; DEBUG_INFORMATION_FORMAT = dwarf; GCC_C_LANGUAGE_STANDARD = gnu17; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 5.0;}; name = Debug; };
 		D85E831EBB6F477DA93340B8 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ANALYZER_NONNULL = YES; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES; DEBUG_INFORMATION_FORMAT = dwarf-with-dsym; GCC_C_LANGUAGE_STANDARD = gnu17; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 5.0;}; name = Release; };
-		8F3A180DE25E432E80273657 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; DEVELOPMENT_TEAM = ""; INFOPLIST_FILE = HabitQuest/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.HabitQuest; PRODUCT_NAME = HabitQuest; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphonesimulator iphoneos"; SUPPORTS_MACCATALYST = NO; SWIFT_OPTIMIZATION_LEVEL = -Onone; TARGETED_DEVICE_FAMILY = "1";}; name = Debug; };
-		0321B6C0066D4842920EAED6 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; DEVELOPMENT_TEAM = ""; INFOPLIST_FILE = HabitQuest/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.HabitQuest; PRODUCT_NAME = HabitQuest; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphonesimulator iphoneos"; SUPPORTS_MACCATALYST = NO; SWIFT_OPTIMIZATION_LEVEL = -O; TARGETED_DEVICE_FAMILY = "1";}; name = Release; };
+		8F3A180DE25E432E80273657 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = HabitQuest/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.HabitQuest; PRODUCT_NAME = HabitQuest; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphonesimulator iphoneos"; SUPPORTS_MACCATALYST = NO; SWIFT_OPTIMIZATION_LEVEL = -Onone; TARGETED_DEVICE_FAMILY = "1";}; name = Debug; };
+		0321B6C0066D4842920EAED6 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = HabitQuest/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.HabitQuest; PRODUCT_NAME = HabitQuest; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphonesimulator iphoneos"; SUPPORTS_MACCATALYST = NO; SWIFT_OPTIMIZATION_LEVEL = -O; TARGETED_DEVICE_FAMILY = "1";}; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
 		028D46C35DA44A02BB62A07B /* Build configuration list for PBXProject "HabitQuest" */ = {isa = XCConfigurationList; buildConfigurations = (7281449BE14845FC9BEF2275 /* Debug */, D85E831EBB6F477DA93340B8 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		C76BE6D8D1A842BAB5D6B26E /* Build configuration list for PBXNativeTarget "HabitQuest" */ = {isa = XCConfigurationList; buildConfigurations = (8F3A180DE25E432E80273657 /* Debug */, 0321B6C0066D4842920EAED6 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		107065CEE468B1FB5EF0F736 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6C671CA7BDAD543A7BC25871 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 107065CEE468B1FB5EF0F736 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 	};
 	rootObject = DB363FF6CCFC403BA270B911 /* Project object */;

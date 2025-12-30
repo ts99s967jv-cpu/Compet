@@ -120,10 +120,24 @@ struct SignInView: View {
         }
 
         if !BackendConfig.isSupabaseConfigured {
-          Text("Backend not configured yet. Add SUPABASE_URL and SUPABASE_ANON_KEY to Info.plist to enable real sign up/login.")
+          Text("Backend not configured: \(BackendConfig.supabaseConfigStatusMessage ?? "Missing required config")")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        } else if !BackendConfig.hasSupabaseSDK {
+          Text("Backend config is present, but the Supabase SDK isn't linked. Add the supabase-swift package to the Xcode project to enable real sign up/login.")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        } else if !Backend.shared.isAvailable {
+          Text("Backend config is present, but the Supabase SDK isn't linked. Add the supabase-swift package to the Xcode project to enable real sign up/login.")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
         }
+
+#if DEBUG
+        Text(BackendConfig.debugSummary)
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+#endif
       }
       .dsCard()
       .padding(.horizontal, DS.Spacing.xl)
@@ -165,13 +179,19 @@ struct SignInView: View {
     isLoading = true
     defer { isLoading = false }
 
-    // If Supabase isn't configured, keep the old local prototype behavior.
+    // If Supabase isn't configured (or the SDK isn't linked), keep the old local prototype behavior.
     if !Backend.shared.isAvailable {
       if mode == .signUp {
         store.account = Account(userID: v.email, email: v.email, username: v.username, createdAt: Date())
         store.saveAll()
       } else {
-        errorMessage = "Backend not configured yet."
+        if !BackendConfig.isSupabaseConfigured {
+          errorMessage = BackendConfig.supabaseConfigStatusMessage ?? "Backend not configured."
+        } else if !BackendConfig.hasSupabaseSDK {
+          errorMessage = "Supabase SDK isn't linked (missing Swift Package dependency)."
+        } else {
+          errorMessage = "Backend unavailable."
+        }
       }
       return
     }
