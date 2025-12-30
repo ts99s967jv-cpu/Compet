@@ -130,7 +130,10 @@ struct ProfileView: View {
           Divider().overlay(DS.Palette.separator(scheme))
 
           Button(role: .destructive) {
-            store.signOut()
+            Task {
+              await Backend.shared.signOut()
+              store.signOut()
+            }
           } label: {
             HStack {
               Text("Log out")

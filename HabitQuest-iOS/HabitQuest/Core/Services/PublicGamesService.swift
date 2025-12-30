@@ -3,9 +3,11 @@ import Foundation
 @MainActor
 final class PublicGamesService {
   private let store: AppStore
+  private let backend: BackendClient
 
   init(store: AppStore) {
     self.store = store
+    self.backend = Backend.shared
   }
 
   func createPublicGame(title: String, settings: GameSettings, maxPlayers: Int, visibility: PublicGameVisibility) {
@@ -38,6 +40,20 @@ final class PublicGamesService {
       players: [PublicGamePlayer(user: me, joinedAt: Date())]
     )
     store.addPublicGame(game)
+
+    // Supabase-backed create (then refresh list).
+    if backend.isAvailable {
+      Task {
+        do {
+          try await backend.createPublicGame(game)
+          let games = try await backend.listPublicGames()
+          await MainActor.run {
+            store.publicGames = games
+            store.saveAll()
+          }
+        } catch {}
+      }
+    }
   }
 
   func join(gameID: String) {
@@ -59,6 +75,19 @@ final class PublicGamesService {
       game.status = .started
     }
     store.updatePublicGame(game)
+
+    if backend.isAvailable, game.visibility != .systemEvent {
+      Task {
+        do {
+          try await backend.joinPublicGame(gameID: gameID)
+          let games = try await backend.listPublicGames()
+          await MainActor.run {
+            store.publicGames = games
+            store.saveAll()
+          }
+        } catch {}
+      }
+    }
 
     // System events must always have an active season game; add the player into it.
     if game.visibility == .systemEvent {
@@ -95,6 +124,19 @@ final class PublicGamesService {
     }
     store.updatePublicGame(game)
 
+    if backend.isAvailable, game.visibility != .systemEvent {
+      Task {
+        do {
+          try await backend.leavePublicGame(gameID: gameID)
+          let games = try await backend.listPublicGames()
+          await MainActor.run {
+            store.publicGames = games
+            store.saveAll()
+          }
+        } catch {}
+      }
+    }
+
     // For system events, also remove from the active season game (prototype).
     if game.visibility == .systemEvent {
       ActiveGamesService(store: store).removePlayerFromActiveGame(activeGameID: "ag_" + game.id, userID: me.id)
@@ -112,6 +154,19 @@ final class PublicGamesService {
 
     game.status = .started
     store.updatePublicGame(game)
+
+    if backend.isAvailable, game.visibility != .systemEvent {
+      Task {
+        do {
+          try await backend.startPublicGameNow(gameID: gameID)
+          let games = try await backend.listPublicGames()
+          await MainActor.run {
+            store.publicGames = games
+            store.saveAll()
+          }
+        } catch {}
+      }
+    }
 
     if isEliminationStyle(game.settings.winCondition) {
       ActiveGamesService(store: store).startEliminationStyleGame(from: game)

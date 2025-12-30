@@ -11,6 +11,8 @@ struct ProfileSetupView: View {
   @State private var visibility: ProfileVisibility = .public
   @State private var hasFitnessTracker: Bool = false
   @Environment(\.colorScheme) private var scheme
+  @State private var errorMessage: String?
+  @State private var isSaving: Bool = false
 
   private var canSave: Bool {
     guard store.account != nil else { return false }
@@ -114,9 +116,9 @@ struct ProfileSetupView: View {
           .padding(.horizontal, DS.Spacing.xl)
 
           Button {
-            save()
+            Task { await save() }
           } label: {
-            Text("Create profile")
+            Text(isSaving ? "Saving…" : "Create profile")
               .frame(maxWidth: .infinity)
               .padding(.vertical, DS.Spacing.m)
           }
@@ -125,6 +127,13 @@ struct ProfileSetupView: View {
           .disabled(!canSave)
           .padding(.horizontal, DS.Spacing.xl)
           .padding(.top, DS.Spacing.s)
+
+          if let errorMessage {
+            Text(errorMessage)
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.danger)
+              .padding(.horizontal, DS.Spacing.xl)
+          }
 
           Spacer(minLength: DS.Spacing.xxl)
         }
@@ -140,10 +149,14 @@ struct ProfileSetupView: View {
     if handle.isEmpty { handle = store.account?.username.isEmpty == false ? store.account!.username : "user\(Int.random(in: 1000...9999))" }
   }
 
-  private func save() {
+  private func save() async {
     guard let account = store.account else { return }
     let now = Date()
-    store.profile = UserProfile(
+    errorMessage = nil
+    isSaving = true
+    defer { isSaving = false }
+
+    let profile = UserProfile(
       id: account.userID,
       displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
       handle: normalizedHandle(handle),
@@ -156,6 +169,20 @@ struct ProfileSetupView: View {
       createdAt: now,
       updatedAt: now
     )
+
+    // Write to backend if available, then persist locally.
+    if Backend.shared.isAvailable {
+      do {
+        try await Backend.shared.upsertMyProfile(profile)
+        store.profile = try await Backend.shared.fetchMyProfile() ?? profile
+      } catch {
+        errorMessage = "Couldn’t save to backend. Check Supabase setup and try again."
+        return
+      }
+    } else {
+      store.profile = profile
+    }
+
     store.saveAll()
   }
 

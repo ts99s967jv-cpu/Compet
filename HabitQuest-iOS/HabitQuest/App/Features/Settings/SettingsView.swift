@@ -66,7 +66,10 @@ struct SettingsView: View {
 
         Section {
           Button("Sign out", role: .destructive) {
-            store.signOut()
+            Task {
+              await Backend.shared.signOut()
+              store.signOut()
+            }
           }
         }
       }

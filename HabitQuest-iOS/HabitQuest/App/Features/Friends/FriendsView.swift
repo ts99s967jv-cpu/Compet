@@ -8,6 +8,7 @@ struct FriendsView: View {
   @State private var searchResults: [PublicUser] = []
   @State private var inviteFriend: PublicUser?
   @State private var viewUser: PublicUser?
+  @State private var isSearching: Bool = false
 
   private let directory = UserDirectoryService()
 
@@ -25,6 +26,20 @@ struct FriendsView: View {
             .foregroundStyle(DS.Palette.subtext(scheme))
             .padding(.horizontal, DS.Spacing.xl)
 
+          if !store.friendRequests.isEmpty {
+            DSSectionHeaderRow(title: "Requests", systemImage: "person.crop.circle.badge.plus")
+            VStack(spacing: DS.Spacing.s) {
+              ForEach(store.friendRequests.filter { $0.status == .pending }) { req in
+                FriendRequestRow(store: store, request: req)
+                if req.id != store.friendRequests.filter({ $0.status == .pending }).last?.id {
+                  Divider().overlay(DS.Palette.separator(scheme))
+                }
+              }
+            }
+            .dsCard()
+            .padding(.horizontal, DS.Spacing.xl)
+          }
+
           if !searchResults.isEmpty {
             DSSectionHeaderRow(title: "Search results", systemImage: "magnifyingglass")
             VStack(spacing: DS.Spacing.s) {
@@ -33,13 +48,30 @@ struct FriendsView: View {
                   user: user,
                   isFriend: store.friends.contains(where: { $0.user.id == user.id }),
                   view: { viewUser = user },
-                  add: { FriendsService(store: store).addFriend(user) },
+                  add: {
+                    if Backend.shared.isAvailable {
+                      Task { await BackendFriendsService(store: store).sendRequest(to: user.id) }
+                    } else {
+                      FriendsService(store: store).addFriend(user)
+                    }
+                  },
                   invite: { inviteFriend = user }
                 )
                 if user.id != searchResults.last?.id {
                   Divider().overlay(DS.Palette.separator(scheme))
                 }
               }
+            }
+            .dsCard()
+            .padding(.horizontal, DS.Spacing.xl)
+          } else if isSearching {
+            DSSectionHeaderRow(title: "Search results", systemImage: "magnifyingglass")
+            VStack(alignment: .leading, spacing: DS.Spacing.s) {
+              Text("Searching…")
+                .font(DS.Typography.section)
+              Text("Looking up users.")
+                .font(DS.Typography.body)
+                .foregroundStyle(DS.Palette.subtext(scheme))
             }
             .dsCard()
             .padding(.horizontal, DS.Spacing.xl)
@@ -91,7 +123,38 @@ struct FriendsView: View {
       .dsScreenBackground()
       .searchable(text: $searchQuery, prompt: "Search by name or handle")
       .onChange(of: searchQuery) { _, newValue in
-        searchResults = directory.search(query: newValue, excluding: store.profile?.id)
+        Task {
+          let q = newValue
+          let trimmed = q.trimmingCharacters(in: .whitespacesAndNewlines)
+          guard !trimmed.isEmpty else {
+            await MainActor.run { searchResults = [] }
+            return
+          }
+
+          if Backend.shared.isAvailable {
+            await MainActor.run { isSearching = true }
+            do {
+              let results = try await Backend.shared.searchUsers(query: trimmed)
+              let meID = store.profile?.id
+              await MainActor.run {
+                searchResults = results.filter { $0.id != meID }
+                isSearching = false
+              }
+            } catch {
+              await MainActor.run {
+                searchResults = []
+                isSearching = false
+              }
+            }
+          } else {
+            await MainActor.run {
+              searchResults = directory.search(query: trimmed, excluding: store.profile?.id)
+            }
+          }
+        }
+      }
+      .refreshable {
+        await BackendFriendsService(store: store).refresh()
       }
       .sheet(item: $inviteFriend) { friend in
         InviteToGameSheet(store: store, friend: friend)
@@ -150,6 +213,56 @@ private struct FriendRow: View {
           Button("Add") { add() }
             .buttonStyle(.borderedProminent)
         }
+      }
+    }
+  }
+}
+
+private struct FriendRequestRow: View {
+  @Environment(\.colorScheme) private var scheme
+  @Bindable var store: AppStore
+  let request: FriendRequest
+
+  private var meID: String? { store.profile?.id }
+  private var isIncoming: Bool { request.to.id == meID }
+  private var other: PublicUser { isIncoming ? request.from : request.to }
+
+  var body: some View {
+    HStack(spacing: 12) {
+      Circle()
+        .fill(DS.Palette.accent.opacity(0.14))
+        .frame(width: 38, height: 38)
+        .overlay(
+          Image(systemName: "person.fill")
+            .foregroundStyle(DS.Palette.accent)
+            .font(.system(size: 14, weight: .semibold))
+        )
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(other.displayName)
+          .font(DS.Typography.body.weight(.semibold))
+        Text(isIncoming ? "Incoming request" : "Request sent")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+      }
+
+      Spacer()
+
+      if isIncoming {
+        Button("Decline", role: .destructive) {
+          Task { await BackendFriendsService(store: store).decline(requestID: request.id) }
+        }
+        .buttonStyle(.bordered)
+
+        Button("Accept") {
+          Task { await BackendFriendsService(store: store).accept(requestID: request.id) }
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(DS.Palette.accent)
+      } else {
+        Text("Pending")
+          .font(DS.Typography.caption.weight(.semibold))
+          .foregroundStyle(DS.Palette.subtext(scheme))
       }
     }
   }

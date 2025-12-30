@@ -1,0 +1,36 @@
+import Foundation
+
+/// Minimal backend contract used by the app UI/services.
+/// This is intentionally small and can grow as we migrate more features.
+@MainActor
+protocol BackendClient {
+  // MARK: Auth
+  var isAvailable: Bool { get }
+  var currentUserID: String? { get }
+
+  func signUp(email: String, password: String) async throws -> String
+  func signIn(email: String, password: String) async throws -> String
+  func signOut() async
+
+  // MARK: Profile
+  func fetchMyProfile() async throws -> UserProfile?
+  func upsertMyProfile(_ profile: UserProfile) async throws
+
+  func searchUsers(query: String) async throws -> [PublicUser]
+  func fetchPublicUser(userID: String) async throws -> PublicUser?
+
+  // MARK: Friends
+  func listFriendRequests() async throws -> [FriendRequest]
+  func sendFriendRequest(to userID: String) async throws
+  func respondToFriendRequest(requestID: String, accept: Bool) async throws
+  func listFriends() async throws -> [PublicUser]
+  func removeFriend(userID: String) async throws
+
+  // MARK: Public games
+  func listPublicGames() async throws -> [PublicGame]
+  func createPublicGame(_ game: PublicGame) async throws
+  func joinPublicGame(gameID: String) async throws
+  func leavePublicGame(gameID: String) async throws
+  func startPublicGameNow(gameID: String) async throws
+}
+

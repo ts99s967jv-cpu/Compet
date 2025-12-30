@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
   @Bindable var store: AppStore
+  @State private var didSyncOnce: Bool = false
 
   private var preferredScheme: ColorScheme? {
     switch store.theme {
@@ -20,6 +21,11 @@ struct RootView: View {
       }
     }
     .preferredColorScheme(preferredScheme)
+    .task {
+      guard !didSyncOnce else { return }
+      didSyncOnce = true
+      await BackendSyncService(store: store).syncAll()
+    }
   }
 }
 

@@ -9,6 +9,7 @@ final class AppStore {
     static let profile = "habitquest.profile"
     static let theme = "habitquest.theme"
     static let friends = "habitquest.friends"
+    static let friendRequests = "habitquest.friendRequests"
     static let invites = "habitquest.invites"
     static let clans = "habitquest.clans"
     static let clanInvites = "habitquest.clanInvites"
@@ -28,6 +29,7 @@ final class AppStore {
   var theme: AppTheme = .system
 
   var friends: [Friend] = []
+  var friendRequests: [FriendRequest] = []
   var invites: [GameInvite] = []
 
   var clans: [Clan] = []
@@ -58,6 +60,7 @@ final class AppStore {
     profile = load(UserProfile.self, key: Keys.profile)
     theme = load(AppTheme.self, key: Keys.theme) ?? .system
     friends = load([Friend].self, key: Keys.friends) ?? []
+    friendRequests = load([FriendRequest].self, key: Keys.friendRequests) ?? []
     invites = load([GameInvite].self, key: Keys.invites) ?? []
     clans = load([Clan].self, key: Keys.clans) ?? []
     clanInvites = load([ClanInvite].self, key: Keys.clanInvites) ?? []
@@ -73,6 +76,7 @@ final class AppStore {
     save(profile, key: Keys.profile)
     save(theme, key: Keys.theme)
     save(friends, key: Keys.friends)
+    save(friendRequests, key: Keys.friendRequests)
     save(invites, key: Keys.invites)
     save(clans, key: Keys.clans)
     save(clanInvites, key: Keys.clanInvites)
@@ -87,6 +91,7 @@ final class AppStore {
     account = nil
     profile = nil
     friends = []
+    friendRequests = []
     invites = []
     clans = []
     clanInvites = []
@@ -127,6 +132,11 @@ final class AppStore {
 
   func removeFriend(userID: String) {
     friends.removeAll { $0.user.id == userID }
+    saveAll()
+  }
+
+  func setFriendRequests(_ requests: [FriendRequest]) {
+    friendRequests = requests.sorted { $0.createdAt > $1.createdAt }
     saveAll()
   }
 

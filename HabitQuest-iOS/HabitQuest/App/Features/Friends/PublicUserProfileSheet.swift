@@ -13,6 +13,18 @@ struct PublicUserProfileSheet: View {
     store.friends.contains(where: { $0.user.id == user.id })
   }
 
+  private var myID: String? { store.profile?.id }
+
+  private var incomingRequest: FriendRequest? {
+    guard let myID else { return nil }
+    return store.friendRequests.first(where: { $0.status == .pending && $0.to.id == myID && $0.from.id == user.id })
+  }
+
+  private var outgoingRequest: FriendRequest? {
+    guard let myID else { return nil }
+    return store.friendRequests.first(where: { $0.status == .pending && $0.from.id == myID && $0.to.id == user.id })
+  }
+
   var body: some View {
     NavigationStack {
       ScrollView {
@@ -65,7 +77,11 @@ struct PublicUserProfileSheet: View {
 
             if isFriend {
               Button(role: .destructive) {
-                FriendsService(store: store).removeFriend(userID: user.id)
+                if Backend.shared.isAvailable {
+                  Task { await BackendFriendsService(store: store).removeFriend(userID: user.id) }
+                } else {
+                  FriendsService(store: store).removeFriend(userID: user.id)
+                }
               } label: {
                 HStack {
                   Image(systemName: "person.fill.xmark")
@@ -76,14 +92,54 @@ struct PublicUserProfileSheet: View {
                 }
               }
               .buttonStyle(.plain)
+            } else if let incomingRequest {
+              HStack {
+                Button(role: .destructive) {
+                  Task { await BackendFriendsService(store: store).decline(requestID: incomingRequest.id) }
+                } label: {
+                  HStack {
+                    Image(systemName: "xmark")
+                      .foregroundStyle(DS.Palette.danger)
+                    Text("Decline")
+                      .font(DS.Typography.body.weight(.semibold))
+                    Spacer()
+                  }
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                  Task { await BackendFriendsService(store: store).accept(requestID: incomingRequest.id) }
+                } label: {
+                  HStack {
+                    Image(systemName: "checkmark")
+                      .foregroundStyle(DS.Palette.accent)
+                    Text("Accept")
+                      .font(DS.Typography.body.weight(.semibold))
+                    Spacer()
+                  }
+                }
+                .buttonStyle(.plain)
+              }
+            } else if outgoingRequest != nil {
+              HStack {
+                Image(systemName: "clock")
+                  .foregroundStyle(DS.Palette.subtext(scheme))
+                Text("Friend request pending")
+                  .font(DS.Typography.body.weight(.semibold))
+                Spacer()
+              }
             } else {
               Button {
-                FriendsService(store: store).addFriend(user)
+                if Backend.shared.isAvailable {
+                  Task { await BackendFriendsService(store: store).sendRequest(to: user.id) }
+                } else {
+                  FriendsService(store: store).addFriend(user)
+                }
               } label: {
                 HStack {
                   Image(systemName: "person.fill.badge.plus")
                     .foregroundStyle(DS.Palette.accent)
-                  Text("Add friend")
+                  Text(Backend.shared.isAvailable ? "Send friend request" : "Add friend")
                     .font(DS.Typography.body.weight(.semibold))
                   Spacer()
                 }

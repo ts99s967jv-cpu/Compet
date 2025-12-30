@@ -70,6 +70,13 @@
 		6F5D426061B960D46EAD3FAC /* GameScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2769AFFCBF25746B1534CC7 /* GameScore.swift */; };
 		7ABA431401AE5BFA308D7938 /* Array+Safe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02169B2242849D8CC5EEA8BA /* Array+Safe.swift */; };
 		774CE67B5F4A41FC9E6289E4 /* GameScoreSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B95B757462D67173BD65331F /* GameScoreSyncService.swift */; };
+		4A3D744AC5F884BB6FB930C5 /* Backend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 940DEE20D2965A50E0254BFC /* Backend.swift */; };
+		52FD88EDD222D1A62E70A142 /* BackendClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1711B3B33A849CCCF19F209F /* BackendClient.swift */; };
+		4B4E1C9EEAE8920C6EE89EA5 /* BackendConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353CDB69B77888C7E880483F /* BackendConfig.swift */; };
+		D5834F2043BF98EFEF1ACB8C /* BackendSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEFC5F211AFAFB8E678758B6 /* BackendSyncService.swift */; };
+		4E91ACC3ED061FFC515CC356 /* SupabaseBackendClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 162706CA404513F9D6EBDE99 /* SupabaseBackendClient.swift */; };
+		64F382889DE12C841965B5BF /* FriendRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 035FD280BDFBC74B6553D632 /* FriendRequest.swift */; };
+		8F3C7004E44BDBD41B51B638 /* BackendFriendsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C15B023E099DDEB49DFDC21 /* BackendFriendsService.swift */; };
 		402422E010E746B59A5A1C41 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 67AE00C3F693499097C20F44 /* Assets.xcassets */; };
 		7860F51FA762421D8E96ADA3 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A7883B5B95F488895B98BFA /* HealthKit.framework */; };
 /* End PBXBuildFile section */
@@ -139,6 +146,13 @@
 		F2769AFFCBF25746B1534CC7 /* GameScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Models/GameScore.swift"; sourceTree = "<group>"; };
 		02169B2242849D8CC5EEA8BA /* Array+Safe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Services/Array+Safe.swift"; sourceTree = "<group>"; };
 		B95B757462D67173BD65331F /* GameScoreSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Services/GameScoreSyncService.swift"; sourceTree = "<group>"; };
+		940DEE20D2965A50E0254BFC /* Backend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Backend/Backend.swift"; sourceTree = "<group>"; };
+		1711B3B33A849CCCF19F209F /* BackendClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Backend/BackendClient.swift"; sourceTree = "<group>"; };
+		353CDB69B77888C7E880483F /* BackendConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Backend/BackendConfig.swift"; sourceTree = "<group>"; };
+		AEFC5F211AFAFB8E678758B6 /* BackendSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Backend/BackendSyncService.swift"; sourceTree = "<group>"; };
+		162706CA404513F9D6EBDE99 /* SupabaseBackendClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Backend/SupabaseBackendClient.swift"; sourceTree = "<group>"; };
+		035FD280BDFBC74B6553D632 /* FriendRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Models/FriendRequest.swift"; sourceTree = "<group>"; };
+		2C15B023E099DDEB49DFDC21 /* BackendFriendsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Services/BackendFriendsService.swift"; sourceTree = "<group>"; };
 		94362FAD014149A88E90AC46 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
 		0111ECC246CC491B9D7E2EA7 /* HabitQuest.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "HabitQuest.entitlements"; sourceTree = "<group>"; };
 		67AE00C3F693499097C20F44 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
@@ -335,6 +349,11 @@
 				E0FCB43B1C9244299EDBA2B1 /* HealthKitScoringService.swift in Sources */,
 				C5D89169399364EBCCED8590 /* HealthKitStepSeriesService.swift in Sources */,
 				C8A1E5734A064BF93D4EFE7E /* HealthKitTrendsService.swift in Sources */,
+				4A3D744AC5F884BB6FB930C5 /* Backend.swift in Sources */,
+				52FD88EDD222D1A62E70A142 /* BackendClient.swift in Sources */,
+				4B4E1C9EEAE8920C6EE89EA5 /* BackendConfig.swift in Sources */,
+				D5834F2043BF98EFEF1ACB8C /* BackendSyncService.swift in Sources */,
+				4E91ACC3ED061FFC515CC356 /* SupabaseBackendClient.swift in Sources */,
 				47977D2BA6234448B378C424 /* Account.swift in Sources */,
 				AD97C89F4DF5497897B323E9 /* ActiveGame.swift in Sources */,
 				EEC37A5C9E984C50A9875364 /* AppTheme.swift in Sources */,
@@ -343,6 +362,7 @@
 				B72267465CE44FC7888FE6F2 /* ClanInvite.swift in Sources */,
 				05DD8D7E50A04BC5A68EA027 /* FitnessLevel.swift in Sources */,
 				6531CC894F73481393A5AA9D /* Friend.swift in Sources */,
+				64F382889DE12C841965B5BF /* FriendRequest.swift in Sources */,
 				1045B556FEA74EE49826D41F /* GameInvite.swift in Sources */,
 				B017959ECFA57CD2A53DC236 /* GameMapStyle.swift in Sources */,
 				6F5D426061B960D46EAD3FAC /* GameScore.swift in Sources */,
@@ -363,6 +383,7 @@
 				7ABA431401AE5BFA308D7938 /* Array+Safe.swift in Sources */,
 				BBC5C1E57F9946DF9BA757A4 /* FitnessEloService.swift in Sources */,
 				64CAB741C6F54B83976CE466 /* FriendsService.swift in Sources */,
+				8F3C7004E44BDBD41B51B638 /* BackendFriendsService.swift in Sources */,
 				8DE9958B258243459975BB66 /* GameInvitesService.swift in Sources */,
 				774CE67B5F4A41FC9E6289E4 /* GameScoreSyncService.swift in Sources */,
 				8D0F9C97B8A2476082EB7B6B /* InventoryService.swift in Sources */,
