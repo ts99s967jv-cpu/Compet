@@ -32,10 +32,7 @@ final class SupabaseBackendClient: BackendClient {
 
   func signUp(email: String, password: String) async throws -> String {
     let res = try await client.auth.signUp(email: email, password: password)
-    guard let id = res.user?.id.uuidString ?? client.auth.currentUser?.id.uuidString else {
-      throw NSError(domain: "SupabaseAuth", code: 1)
-    }
-    return id
+    return res.user.id.uuidString
   }
 
   func signIn(email: String, password: String) async throws -> String {
@@ -92,7 +89,9 @@ final class SupabaseBackendClient: BackendClient {
 
   func upsertMyProfile(_ profile: UserProfile) async throws {
     guard let uid = client.auth.currentUser?.id else { return }
-    let inv = profile.inventory.items
+    let inv: [String: Int] = Dictionary(
+      uniqueKeysWithValues: profile.inventory.quantities.map { ($0.key.rawValue, $0.value) }
+    )
     let row = ProfileRow(
       id: uid,
       display_name: profile.displayName,
@@ -412,18 +411,23 @@ final class SupabaseBackendClient: BackendClient {
   // MARK: Mapping
 
   private func mapProfile(_ row: ProfileRow) -> UserProfile {
+    let quantities: [PowerUpID: Int] = row.inventory.reduce(into: [:]) { acc, kv in
+      let (key, value) = kv
+      guard let id = PowerUpID(rawValue: key) else { return }
+      acc[id] = value
+    }
     UserProfile(
       id: row.id.uuidString,
       displayName: row.display_name,
       handle: row.handle,
       age: row.age,
-      gender: Gender(rawValue: row.gender) ?? .other,
+      gender: Gender(rawValue: row.gender) ?? .preferNotToSay,
       fitnessLevel: FitnessLevel(rawValue: row.fitness_level) ?? .beginner,
       visibility: ProfileVisibility(rawValue: row.visibility) ?? .public,
       hasFitnessTracker: row.has_fitness_tracker,
       fitnessElo: row.fitness_elo,
       fitnessEloUpdatedAt: row.fitness_elo_updated_at,
-      inventory: UserInventory(items: row.inventory),
+      inventory: UserInventory(quantities: quantities),
       createdAt: row.created_at,
       updatedAt: row.updated_at
     )

@@ -20,10 +20,7 @@ final class SupabaseBackendClient: BackendClient {
 
   func signUp(email: String, password: String) async throws -> String {
     let res = try await client.auth.signUp(email: email, password: password)
-    guard let id = res.user?.id.uuidString ?? client.auth.currentUser?.id.uuidString else {
-      throw NSError(domain: "SupabaseAuth", code: 1)
-    }
-    return id
+    return res.user.id.uuidString
   }
 
   func signIn(email: String, password: String) async throws -> String {
@@ -75,7 +72,7 @@ final class SupabaseBackendClient: BackendClient {
       has_fitness_tracker: profile.hasFitnessTracker,
       fitness_elo: profile.fitnessElo,
       fitness_elo_updated_at: profile.fitnessEloUpdatedAt,
-      inventory: profile.inventory.items,
+      inventory: Dictionary(uniqueKeysWithValues: profile.inventory.quantities.map { ($0.key.rawValue, $0.value) }),
       created_at: profile.createdAt,
       updated_at: profile.updatedAt
     )
@@ -290,18 +287,23 @@ final class SupabaseBackendClient: BackendClient {
   }
 
   private func mapProfile(_ row: ProfileRow) -> UserProfile {
+    let quantities: [PowerUpID: Int] = row.inventory.reduce(into: [:]) { acc, kv in
+      let (key, value) = kv
+      guard let id = PowerUpID(rawValue: key) else { return }
+      acc[id] = value
+    }
     UserProfile(
       id: row.id.uuidString,
       displayName: row.display_name,
       handle: row.handle,
       age: row.age,
-      gender: Gender(rawValue: row.gender) ?? .other,
+      gender: Gender(rawValue: row.gender) ?? .preferNotToSay,
       fitnessLevel: FitnessLevel(rawValue: row.fitness_level) ?? .beginner,
       visibility: ProfileVisibility(rawValue: row.visibility) ?? .public,
       hasFitnessTracker: row.has_fitness_tracker,
       fitnessElo: row.fitness_elo,
       fitnessEloUpdatedAt: row.fitness_elo_updated_at,
-      inventory: UserInventory(items: row.inventory),
+      inventory: UserInventory(quantities: quantities),
       createdAt: row.created_at,
       updatedAt: row.updated_at
     )
