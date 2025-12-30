@@ -416,7 +416,7 @@ final class SupabaseBackendClient: BackendClient {
       guard let id = PowerUpID(rawValue: key) else { return }
       acc[id] = value
     }
-    UserProfile(
+    return UserProfile(
       id: row.id.uuidString,
       displayName: row.display_name,
       handle: row.handle,
