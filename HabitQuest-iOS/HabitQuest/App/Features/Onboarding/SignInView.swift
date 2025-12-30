@@ -120,7 +120,7 @@ struct SignInView: View {
         }
 
         if !BackendConfig.isSupabaseConfigured {
-          Text("Backend not configured yet. Add SUPABASE_URL and SUPABASE_ANON_KEY to Info.plist to enable real sign up/login.")
+          Text("Backend not configured: \(BackendConfig.supabaseConfigStatusMessage ?? "Missing required config")")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
         } else if !BackendConfig.hasSupabaseSDK {
@@ -185,9 +185,13 @@ struct SignInView: View {
         store.account = Account(userID: v.email, email: v.email, username: v.username, createdAt: Date())
         store.saveAll()
       } else {
-        errorMessage = BackendConfig.isSupabaseConfigured
-          ? "Supabase SDK isn't linked (missing Swift Package dependency)."
-          : "Backend not configured yet."
+        if !BackendConfig.isSupabaseConfigured {
+          errorMessage = BackendConfig.supabaseConfigStatusMessage ?? "Backend not configured."
+        } else if !BackendConfig.hasSupabaseSDK {
+          errorMessage = "Supabase SDK isn't linked (missing Swift Package dependency)."
+        } else {
+          errorMessage = "Backend unavailable."
+        }
       }
       return
     }

@@ -3,11 +3,8 @@ import Foundation
 @MainActor
 enum Backend {
   static let shared: BackendClient = {
-#if canImport(Supabase)
+    guard BackendConfig.hasSupabaseSDK else { return LocalOnlyBackendClient() }
     return SupabaseBackendClient()
-#else
-    return LocalOnlyBackendClient()
-#endif
   }()
 }
 
