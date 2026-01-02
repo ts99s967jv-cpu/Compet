@@ -48,7 +48,14 @@ final class PublicGamesService {
           try await backend.createPublicGame(game)
           let games = try await backend.listPublicGames()
           await MainActor.run {
-            store.publicGames = games
+            // Avoid wiping the UI to an empty state due to transient list issues.
+            // Only replace if we got results, or if the results include the game we just created.
+            let filtered = games.filter { !store.hiddenPublicGameIDs.contains($0.id) }
+            if !filtered.isEmpty || filtered.contains(where: { $0.id == game.id }) {
+              store.publicGames = filtered
+            } else if !store.publicGames.contains(where: { $0.id == game.id }) {
+              store.addPublicGame(game)
+            }
             store.saveAll()
           }
         } catch {

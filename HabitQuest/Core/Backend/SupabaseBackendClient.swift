@@ -197,7 +197,7 @@ final class SupabaseBackendClient: BackendClient {
 
   func listPublicGames() async throws -> [PublicGame] {
     // Robust base-table implementation (does not require `public_games_view`).
-    guard let me = client.auth.currentUser?.id else { return [] }
+    let me = client.auth.currentUser?.id
 
     struct GameRow: Codable {
       var id: UUID
@@ -226,22 +226,25 @@ final class SupabaseBackendClient: BackendClient {
       .execute()
       .value
 
-    struct MembershipRow: Codable { var game_id: UUID }
-    let memberships: [MembershipRow] = try await client
-      .from("public_game_players")
-      .select("game_id")
-      .eq("user_id", value: me.uuidString)
-      .execute()
-      .value
+    var myRows: [GameRow] = []
+    if let me {
+      struct MembershipRow: Codable { var game_id: UUID }
+      let memberships: [MembershipRow] = (try? await client
+        .from("public_game_players")
+        .select("game_id")
+        .eq("user_id", value: me.uuidString)
+        .execute()
+        .value) ?? []
 
-    let myIDs = Set(memberships.map { $0.game_id.uuidString })
-    let myOr = ([ "created_by.eq.\(me.uuidString)" ] + myIDs.map { "id.eq.\($0)" }).joined(separator: ",")
-    let myRows: [GameRow] = try await client
-      .from("public_games")
-      .select()
-      .or(myOr)
-      .execute()
-      .value
+      let myIDs = Set(memberships.map { $0.game_id.uuidString })
+      let myOr = ([ "created_by.eq.\(me.uuidString)" ] + myIDs.map { "id.eq.\($0)" }).joined(separator: ",")
+      myRows = (try? await client
+        .from("public_games")
+        .select()
+        .or(myOr)
+        .execute()
+        .value) ?? []
+    }
 
     var byID: [String: GameRow] = [:]
     for r in (browseRows + myRows) { byID[r.id.uuidString] = r }
@@ -251,12 +254,12 @@ final class SupabaseBackendClient: BackendClient {
     var playerRows: [PlayerRow] = []
     if !gameIDs.isEmpty {
       let cond = gameIDs.map { "game_id.eq.\($0)" }.joined(separator: ",")
-      playerRows = try await client
+      playerRows = (try? await client
         .from("public_game_players")
         .select("game_id,user_id,joined_at")
         .or(cond)
         .execute()
-        .value
+        .value) ?? []
     }
 
     let creatorIDs = Set(rows.map { $0.created_by.uuidString })
@@ -266,12 +269,12 @@ final class SupabaseBackendClient: BackendClient {
     var profilesByID: [String: ProfilePublicRow] = [:]
     if !profileIDs.isEmpty {
       let cond = profileIDs.map { "id.eq.\($0)" }.joined(separator: ",")
-      let profileRows: [ProfilePublicRow] = try await client
+      let profileRows: [ProfilePublicRow] = (try? await client
         .from("profiles")
         .select("id,display_name,handle,visibility")
         .or(cond)
         .execute()
-        .value
+        .value) ?? []
       profilesByID = Dictionary(uniqueKeysWithValues: profileRows.map { ($0.id.uuidString, $0) })
     }
 

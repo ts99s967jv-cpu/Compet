@@ -83,6 +83,10 @@ struct TodayView: View {
       .padding(.top, DS.Spacing.l)
     }
     .dsScreenBackground()
+    .refreshable {
+      await BackendSyncService(store: store).syncAll()
+      await refreshStepHabits()
+    }
     .onAppear {
       // Seed a few habits for first-run UI (only if empty).
       if store.habits.isEmpty {

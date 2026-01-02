@@ -192,6 +192,11 @@ struct CompetitionsView: View {
         .padding(.bottom, DS.Spacing.xxl)
       }
       .dsScreenBackground()
+      .refreshable {
+        await BackendSyncService(store: store).syncAll()
+        SystemEventsService(store: store).sync()
+        ActiveGamesService(store: store).tick()
+      }
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
           Button {

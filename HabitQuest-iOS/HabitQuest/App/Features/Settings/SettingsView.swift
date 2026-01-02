@@ -78,11 +78,36 @@ struct SettingsView: View {
           .dsCard()
           .padding(.horizontal, DS.Spacing.xl)
 
+          DSSectionHeaderRow(title: "Games", systemImage: "gamecontroller")
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Text("Hidden games")
+              .font(DS.Typography.section)
+            Text("Leaving a lobby hides it from your lists so it doesn’t come back after a refresh.")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+            Button {
+              store.hiddenPublicGameIDs = []
+              store.saveAll()
+              Task { await BackendSyncService(store: store).syncAll() }
+            } label: {
+              Text("Reset hidden games")
+                .font(DS.Typography.body.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, DS.Spacing.s)
+            }
+            .buttonStyle(.bordered)
+          }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
+
           Spacer(minLength: DS.Spacing.xxl)
         }
         .padding(.bottom, DS.Spacing.xxl)
       }
       .dsScreenBackground()
+      .refreshable {
+        await BackendSyncService(store: store).syncAll()
+      }
     }
   }
 }

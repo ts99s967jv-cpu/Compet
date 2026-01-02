@@ -146,6 +146,10 @@ struct ProfileView: View {
       }
     }
     .dsScreenBackground()
+    .refreshable {
+      await BackendSyncService(store: store).syncAll()
+      await loadTrends()
+    }
     .sheet(isPresented: $showEditProfile) {
       EditProfileSheet(store: store)
     }

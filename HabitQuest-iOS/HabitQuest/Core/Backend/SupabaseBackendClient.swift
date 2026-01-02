@@ -275,7 +275,7 @@ final class SupabaseBackendClient: BackendClient {
   func listPublicGames() async throws -> [PublicGame] {
     // Robust base-table implementation (does not require `public_games_view`).
     // This fixes "games disappear after re-login" when the view/RLS isn't configured.
-    guard let me = client.auth.currentUser?.id else { return [] }
+    let me = client.auth.currentUser?.id
 
     struct GameRow: Codable {
       var id: UUID
@@ -306,22 +306,25 @@ final class SupabaseBackendClient: BackendClient {
       .value
 
     // 2) Games I'm in (covers private + my created games even if private)
-    struct MembershipRow: Codable { var game_id: UUID }
-    let memberships: [MembershipRow] = try await client
-      .from("public_game_players")
-      .select("game_id")
-      .eq("user_id", value: me.uuidString)
-      .execute()
-      .value
+    var myRows: [GameRow] = []
+    if let me {
+      struct MembershipRow: Codable { var game_id: UUID }
+      let memberships: [MembershipRow] = (try? await client
+        .from("public_game_players")
+        .select("game_id")
+        .eq("user_id", value: me.uuidString)
+        .execute()
+        .value) ?? []
 
-    let myIDs = Set(memberships.map { $0.game_id.uuidString })
-    let myOr = ([ "created_by.eq.\(me.uuidString)" ] + myIDs.map { "id.eq.\($0)" }).joined(separator: ",")
-    let myRows: [GameRow] = try await client
-      .from("public_games")
-      .select()
-      .or(myOr)
-      .execute()
-      .value
+      let myIDs = Set(memberships.map { $0.game_id.uuidString })
+      let myOr = ([ "created_by.eq.\(me.uuidString)" ] + myIDs.map { "id.eq.\($0)" }).joined(separator: ",")
+      myRows = (try? await client
+        .from("public_games")
+        .select()
+        .or(myOr)
+        .execute()
+        .value) ?? []
+    }
 
     // Merge distinct by id
     var byID: [String: GameRow] = [:]
@@ -331,16 +334,16 @@ final class SupabaseBackendClient: BackendClient {
     let rows = byID.values.sorted { $0.created_at > $1.created_at }
     let gameIDs = rows.map { $0.id.uuidString }
 
-    // Fetch players for these games
+    // Fetch players for these games (best-effort; don't fail the whole list if RLS blocks it).
     var playerRows: [PlayerRow] = []
     if !gameIDs.isEmpty {
       let cond = gameIDs.map { "game_id.eq.\($0)" }.joined(separator: ",")
-      playerRows = try await client
+      playerRows = (try? await client
         .from("public_game_players")
         .select("game_id,user_id,joined_at")
         .or(cond)
         .execute()
-        .value
+        .value) ?? []
     }
 
     // Fetch profiles for creators + players (no joins required)
@@ -351,12 +354,12 @@ final class SupabaseBackendClient: BackendClient {
     var profilesByID: [String: ProfilePublicRow] = [:]
     if !profileIDs.isEmpty {
       let cond = profileIDs.map { "id.eq.\($0)" }.joined(separator: ",")
-      let profileRows: [ProfilePublicRow] = try await client
+      let profileRows: [ProfilePublicRow] = (try? await client
         .from("profiles")
         .select("id,display_name,handle,visibility")
         .or(cond)
         .execute()
-        .value
+        .value) ?? []
       profilesByID = Dictionary(uniqueKeysWithValues: profileRows.map { ($0.id.uuidString, $0) })
     }
 
