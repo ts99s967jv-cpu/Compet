@@ -9,7 +9,7 @@ struct SignInView: View {
   @State private var password: String = ""
   @State private var mode: AuthMode = .signUp
   @State private var isLoading: Bool = false
-  @State private var useMagicLinkForLogin: Bool = true
+  @State private var useMagicLinkForLogin: Bool = false
   @State private var infoMessage: String?
 
   private enum AuthMode: String, CaseIterable, Identifiable {
@@ -225,8 +225,11 @@ struct SignInView: View {
             errorMessage = "Missing SUPABASE_REDIRECT_URL."
             return
           }
+          // Persist email so the callback handler can restore context even after cold start.
+          store.pendingAuthEmail = v.email
+          store.saveAll()
           try await Backend.shared.sendMagicLink(email: v.email, redirectTo: redirect)
-          infoMessage = "Check your email for a magic link to finish logging in."
+          infoMessage = "Check your email for a magic link, then open it on this device to finish logging in."
           return
         } else {
           userID = try await Backend.shared.signIn(email: v.email, password: v.password)
@@ -243,6 +246,7 @@ struct SignInView: View {
         createdAt: Date()
       )
       store.profile = fetchedProfile
+      store.pendingAuthEmail = nil
       store.saveAll()
     } catch {
       errorMessage = "Sign in failed. Check your credentials and Supabase setup."

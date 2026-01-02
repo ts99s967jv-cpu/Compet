@@ -18,16 +18,21 @@ final class BackendSyncService {
   func syncAll() async {
     guard backend.isAvailable else { return }
     do {
-      // Profile
-      store.profile = try await backend.fetchMyProfile()
+      // Only overwrite auth-scoped state when we actually have a backend session.
+      if backend.currentUserID != nil {
+        // Profile
+        if let profile = try await backend.fetchMyProfile() {
+          store.profile = profile
+        }
 
-      // Social
-      let friends = try await backend.listFriends()
-      store.friends = friends.map { Friend(user: $0, since: Date()) }
-      store.friends.sort { $0.user.displayName.localizedCaseInsensitiveCompare($1.user.displayName) == .orderedAscending }
+        // Social
+        let friends = try await backend.listFriends()
+        store.friends = friends.map { Friend(user: $0, since: Date()) }
+        store.friends.sort { $0.user.displayName.localizedCaseInsensitiveCompare($1.user.displayName) == .orderedAscending }
 
-      let requests = try await backend.listFriendRequests()
-      store.setFriendRequests(requests)
+        let requests = try await backend.listFriendRequests()
+        store.setFriendRequests(requests)
+      }
 
       // Games
       let publicGames = try await backend.listPublicGames()

@@ -20,8 +20,15 @@ struct HabitQuestApp: App {
   private func handleAuthCallback(url: URL) async {
     do {
       let userID = try await Backend.shared.handleAuthCallback(url: url)
-      store.account = Account(userID: userID, email: store.account?.email ?? "", username: store.account?.username ?? "", createdAt: Date())
+      let email = store.pendingAuthEmail ?? store.account?.email ?? ""
+      store.account = Account(
+        userID: userID,
+        email: email,
+        username: store.account?.username ?? "",
+        createdAt: Date()
+      )
       store.profile = try await Backend.shared.fetchMyProfile()
+      store.pendingAuthEmail = nil
       store.saveAll()
       await BackendSyncService(store: store).syncAll()
     } catch {
