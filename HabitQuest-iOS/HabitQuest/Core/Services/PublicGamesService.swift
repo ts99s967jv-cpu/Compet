@@ -51,7 +51,13 @@ final class PublicGamesService {
             store.publicGames = games
             store.saveAll()
           }
-        } catch {}
+        } catch {
+          // If backend failed, remove the optimistic local insert so it doesn't "vanish later" on re-login.
+          await MainActor.run {
+            store.publicGames.removeAll { $0.id == game.id }
+            store.saveAll()
+          }
+        }
       }
     }
   }
