@@ -83,7 +83,8 @@ final class SupabaseBackendClient: BackendClient {
   }
 
   func searchUsers(query: String) async throws -> [PublicUser] {
-    let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    var q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    if q.hasPrefix("@") { q.removeFirst() }
     guard !q.isEmpty else { return [] }
     struct PublicRow: Codable { var id: UUID; var display_name: String; var handle: String; var visibility: String }
     let rows: [PublicRow] = try await client

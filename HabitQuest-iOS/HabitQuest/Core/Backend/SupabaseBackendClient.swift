@@ -104,7 +104,8 @@ final class SupabaseBackendClient: BackendClient {
   }
 
   func searchUsers(query: String) async throws -> [PublicUser] {
-    let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    var q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    if q.hasPrefix("@") { q.removeFirst() }
     guard !q.isEmpty else { return [] }
 
     // Simple ilike search (you'll add an index on lower(handle)/lower(display_name)).
