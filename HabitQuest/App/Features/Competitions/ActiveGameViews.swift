@@ -561,21 +561,37 @@ struct ActiveGameDetailSheet: View {
 
   private func defaultCheckpoints(maxScore: Int, activity: GameActivity) -> [GameCheckpoint] {
     let fracs: [Double] = [0.25, 0.5, 0.75, 1.0]
+    var lastValue = 0
+    let step = stepSizeForCheckpoints(maxScore: maxScore, activity: activity)
     return fracs.map { f in
       let raw = Int((Double(maxScore) * f).rounded())
-      let rounded = roundForDisplay(raw, activity: activity)
-      return GameCheckpoint(
-        id: "\(f)",
-        progress: f,
-        label: checkpointLabel(value: rounded, activity: activity)
-      )
+      let target = (f >= 0.999) ? maxScore : raw
+      var rounded = roundForDisplay(target, activity: activity, step: step)
+      if rounded <= lastValue, f < 0.999 {
+        rounded = min(maxScore, lastValue + step)
+      }
+      lastValue = max(lastValue, rounded)
+      return GameCheckpoint(id: "\(f)", progress: f, label: checkpointLabel(value: rounded, activity: activity))
     }
   }
 
-  private func roundForDisplay(_ v: Int, activity: GameActivity) -> Int {
+  private func stepSizeForCheckpoints(maxScore: Int, activity: GameActivity) -> Int {
     switch activity {
     case .steps:
-      let step = 500
+      if maxScore < 400 { return 50 }
+      if maxScore < 1200 { return 100 }
+      if maxScore < 4000 { return 250 }
+      if maxScore < 12000 { return 500 }
+      if maxScore < 30000 { return 1000 }
+      return 2000
+    default:
+      return 1
+    }
+  }
+
+  private func roundForDisplay(_ v: Int, activity: GameActivity, step: Int) -> Int {
+    switch activity {
+    case .steps:
       return max(step, (v / step) * step)
     case .running, .cycling, .swimming:
       return max(1, v)
