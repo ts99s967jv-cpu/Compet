@@ -571,11 +571,13 @@ private struct PublicGameDetailSheet: View {
               if game.visibility == .systemEvent {
                 let endsAt = game.createdAt.addingTimeInterval(TimeInterval(game.settings.timeLimitDays) * 24 * 60 * 60).addingTimeInterval(-1)
                 Text("\(game.settings.activity.title) • \(game.settings.winCondition.title) • Season ends \(endsAt.formatted(date: .abbreviated, time: .omitted)) • Score: \(game.settings.scoringSummary)")
+                  .font(DS.Typography.body)
+                  .foregroundStyle(DS.Palette.subtext(scheme))
               } else {
                 Text("\(game.settings.activity.title) • \(game.settings.timeLimitDays)d • \(game.settings.winCondition.title) • Score: \(game.settings.scoringSummary)")
+                  .font(DS.Typography.body)
+                  .foregroundStyle(DS.Palette.subtext(scheme))
               }
-                .font(DS.Typography.body)
-                .foregroundStyle(DS.Palette.subtext(scheme))
             }
             .padding(.horizontal, DS.Spacing.xl)
             .padding(.top, DS.Spacing.l)
