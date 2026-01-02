@@ -41,6 +41,9 @@ struct SettingsView: View {
                 store.profile?.hasFitnessTracker = newValue
                 store.profile?.updatedAt = Date()
                 store.saveAll()
+                if let p = store.profile, Backend.shared.isAvailable {
+                  Task { try? await Backend.shared.upsertMyProfile(p) }
+                }
               }
             ))
             Text("Used for fair matchmaking in games that require/avoid tracker users.")

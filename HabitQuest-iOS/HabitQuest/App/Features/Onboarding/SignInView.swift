@@ -241,6 +241,9 @@ Fix options:
       )
       store.profile = fetchedProfile
       store.saveAll()
+
+      // Pull down server state (profile + games + friends) immediately after auth.
+      await BackendSyncService(store: store).syncAll()
     } catch {
       let ns = error as NSError
       let desc = (ns.userInfo[NSLocalizedDescriptionKey] as? String) ?? error.localizedDescription

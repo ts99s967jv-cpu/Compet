@@ -15,6 +15,7 @@ struct EditProfileSheet: View {
   @State private var hasFitnessTracker: Bool = false
 
   @State private var errorMessage: String?
+  @State private var isSaving: Bool = false
 
   private var canSave: Bool {
     guard store.profile != nil else { return false }
@@ -130,8 +131,10 @@ struct EditProfileSheet: View {
           Button("Cancel") { dismiss() }
         }
         ToolbarItem(placement: .topBarTrailing) {
-          Button("Save") { save() }
-            .disabled(!canSave)
+          Button(isSaving ? "Saving…" : "Save") {
+            Task { await save() }
+          }
+          .disabled(!canSave || isSaving)
         }
       }
       .onAppear { prefill() }
@@ -150,7 +153,7 @@ struct EditProfileSheet: View {
     hasFitnessTracker = p.hasFitnessTracker
   }
 
-  private func save() {
+  private func save() async {
     errorMessage = nil
     guard var p = store.profile else { return }
 
@@ -172,8 +175,26 @@ struct EditProfileSheet: View {
     p.visibility = visibility
     p.hasFitnessTracker = hasFitnessTracker
     p.updatedAt = Date()
+
+    isSaving = true
+    defer { isSaving = false }
+
+    // Persist locally immediately for snappy UI.
     store.profile = p
     store.saveAll()
+
+    // Persist to backend so it survives log out / reinstall.
+    if Backend.shared.isAvailable {
+      do {
+        try await Backend.shared.upsertMyProfile(p)
+        store.profile = try await Backend.shared.fetchMyProfile() ?? p
+        store.saveAll()
+      } catch {
+        errorMessage = "Couldn’t save to backend. Please try again."
+        return
+      }
+    }
+
     dismiss()
   }
 

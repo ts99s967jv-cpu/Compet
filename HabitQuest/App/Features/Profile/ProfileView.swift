@@ -125,7 +125,10 @@ struct ProfileView: View {
 
         VStack(alignment: .leading, spacing: DS.Spacing.s) {
           Button(role: .destructive) {
-            store.signOut()
+            Task {
+              await Backend.shared.signOut()
+              store.signOut()
+            }
           } label: {
             HStack {
               Text("Log out")
