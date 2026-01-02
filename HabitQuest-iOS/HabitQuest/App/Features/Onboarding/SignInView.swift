@@ -172,19 +172,14 @@ struct SignInView: View {
     isLoading = true
     defer { isLoading = false }
 
-    // If Supabase isn't configured (or the SDK isn't linked), keep the old local prototype behavior.
+    // Require real backend auth (no local prototype accounts).
     if !Backend.shared.isAvailable {
-      if mode == .signUp {
-        store.account = Account(userID: v.email, email: v.email, username: v.username, createdAt: Date())
-        store.saveAll()
+      if !BackendConfig.isSupabaseConfigured {
+        errorMessage = BackendConfig.supabaseConfigStatusMessage ?? "Backend not configured."
+      } else if !BackendConfig.hasSupabaseSDK {
+        errorMessage = "Supabase SDK isn't linked (missing Swift Package dependency)."
       } else {
-        if !BackendConfig.isSupabaseConfigured {
-          errorMessage = BackendConfig.supabaseConfigStatusMessage ?? "Backend not configured."
-        } else if !BackendConfig.hasSupabaseSDK {
-          errorMessage = "Supabase SDK isn't linked (missing Swift Package dependency)."
-        } else {
-          errorMessage = "Backend unavailable."
-        }
+        errorMessage = "Backend unavailable."
       }
       return
     }
@@ -193,25 +188,35 @@ struct SignInView: View {
       let userID: String
       switch mode {
       case .signUp:
-        userID = try await Backend.shared.signUp(email: v.email, password: v.password)
-        // Create a minimal profile row so the user can be found immediately by username.
-        let now = Date()
-        let profile = UserProfile(
-          id: userID,
-          displayName: v.username,
-          handle: v.username,
-          age: 18,
-          gender: .preferNotToSay,
-          fitnessLevel: .beginner,
-          visibility: .public,
-          hasFitnessTracker: false,
-          fitnessElo: nil,
-          fitnessEloUpdatedAt: nil,
-          inventory: .empty,
-          createdAt: now,
-          updatedAt: now
-        )
-        try await Backend.shared.upsertMyProfile(profile)
+        _ = try await Backend.shared.signUp(email: v.email, password: v.password)
+        // Many Supabase projects require email confirmation. If so, sign-in will fail until confirmed.
+        do {
+          userID = try await Backend.shared.signIn(email: v.email, password: v.password)
+        } catch {
+          infoMessage = "Account created. If login fails, your Supabase project likely requires email confirmation before sign-in. Confirm your email in the message Supabase sent, or disable email confirmations in Supabase Auth settings."
+          return
+        }
+
+        // Ensure a profile exists once we have a session.
+        if (try await Backend.shared.fetchMyProfile()) == nil {
+          let now = Date()
+          let profile = UserProfile(
+            id: userID,
+            displayName: v.username,
+            handle: v.username,
+            age: 18,
+            gender: .preferNotToSay,
+            fitnessLevel: .beginner,
+            visibility: .public,
+            hasFitnessTracker: false,
+            fitnessElo: nil,
+            fitnessEloUpdatedAt: nil,
+            inventory: .empty,
+            createdAt: now,
+            updatedAt: now
+          )
+          try await Backend.shared.upsertMyProfile(profile)
+        }
       case .signIn:
         userID = try await Backend.shared.signIn(email: v.email, password: v.password)
       }
@@ -228,7 +233,9 @@ struct SignInView: View {
       store.profile = fetchedProfile
       store.saveAll()
     } catch {
-      errorMessage = "Sign in failed. Check your credentials and Supabase setup."
+      let ns = error as NSError
+      let desc = (ns.userInfo[NSLocalizedDescriptionKey] as? String) ?? error.localizedDescription
+      errorMessage = "Auth failed: \(desc)"
     }
   }
 
