@@ -193,7 +193,16 @@ struct SignInView: View {
         do {
           userID = try await Backend.shared.signIn(email: v.email, password: v.password)
         } catch {
-          infoMessage = "Account created. If login fails, your Supabase project likely requires email confirmation before sign-in. Confirm your email in the message Supabase sent, or disable email confirmations in Supabase Auth settings."
+          let ns = error as NSError
+          let desc = (ns.userInfo[NSLocalizedDescriptionKey] as? String) ?? error.localizedDescription
+          infoMessage = "Account created, but login isn’t available yet: \(desc)"
+          errorMessage = """
+Your Supabase project likely requires email confirmation before sign-in, but the confirmation email wasn’t received.
+
+Fix options:
+- Supabase Dashboard → Authentication → Providers → Email: turn OFF “Confirm email” (recommended for testing), or
+- Configure SMTP + check spam so Supabase can deliver the confirmation email.
+"""
           return
         }
 
