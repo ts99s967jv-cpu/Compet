@@ -8,7 +8,6 @@ final class AppStore {
     static let account = "habitquest.account"
     static let profile = "habitquest.profile"
     static let theme = "habitquest.theme"
-    static let pendingAuthEmail = "habitquest.pendingAuthEmail"
     static let friends = "habitquest.friends"
     static let friendRequests = "habitquest.friendRequests"
     static let invites = "habitquest.invites"
@@ -28,10 +27,6 @@ final class AppStore {
   var account: Account?
   var profile: UserProfile?
   var theme: AppTheme = .system
-
-  /// Temporary storage for auth flows that complete via an external callback (magic link).
-  /// This is NOT a logged-in session marker; it only helps us restore context on callback.
-  var pendingAuthEmail: String?
 
   var friends: [Friend] = []
   var friendRequests: [FriendRequest] = []
@@ -64,7 +59,6 @@ final class AppStore {
     account = load(Account.self, key: Keys.account)
     profile = load(UserProfile.self, key: Keys.profile)
     theme = load(AppTheme.self, key: Keys.theme) ?? .system
-    pendingAuthEmail = load(String.self, key: Keys.pendingAuthEmail)
     friends = load([Friend].self, key: Keys.friends) ?? []
     friendRequests = load([FriendRequest].self, key: Keys.friendRequests) ?? []
     invites = load([GameInvite].self, key: Keys.invites) ?? []
@@ -81,7 +75,6 @@ final class AppStore {
     save(account, key: Keys.account)
     save(profile, key: Keys.profile)
     save(theme, key: Keys.theme)
-    save(pendingAuthEmail, key: Keys.pendingAuthEmail)
     save(friends, key: Keys.friends)
     save(friendRequests, key: Keys.friendRequests)
     save(invites, key: Keys.invites)
@@ -97,7 +90,6 @@ final class AppStore {
   func signOut() {
     account = nil
     profile = nil
-    pendingAuthEmail = nil
     friends = []
     friendRequests = []
     invites = []

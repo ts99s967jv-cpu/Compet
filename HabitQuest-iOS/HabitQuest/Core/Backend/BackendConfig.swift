@@ -37,11 +37,6 @@ enum BackendConfig {
     normalizedString("SUPABASE_ANON_KEY")
   }
 
-  static var supabaseRedirectURL: URL? {
-    guard let s = normalizedString("SUPABASE_REDIRECT_URL") else { return nil }
-    return URL(string: s)
-  }
-
   static var isSupabaseConfigured: Bool {
     supabaseURL != nil && (supabaseAnonKey?.isEmpty == false)
   }
@@ -64,9 +59,8 @@ enum BackendConfig {
   static var debugSummary: String {
     let url = rawStringValue("SUPABASE_URL") ?? "(missing)"
     let keyPresent = (normalizedString("SUPABASE_ANON_KEY") != nil)
-    let redirect = rawStringValue("SUPABASE_REDIRECT_URL") ?? "(missing)"
     let status = supabaseConfigStatusMessage ?? "OK"
-    return "hasSupabaseSDK=\(hasSupabaseSDK) supabaseURL=\(url) anonKeyPresent=\(keyPresent) redirectURL=\(redirect) status=\(status)"
+    return "hasSupabaseSDK=\(hasSupabaseSDK) supabaseURL=\(url) anonKeyPresent=\(keyPresent) status=\(status)"
   }
 #endif
 }

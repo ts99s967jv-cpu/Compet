@@ -44,17 +44,6 @@ final class SupabaseBackendClient: BackendClient {
     try? await client.auth.signOut()
   }
 
-  func sendMagicLink(email: String, redirectTo: URL) async throws {
-    // Sends a magic link (passwordless sign-in) to email.
-    try await client.auth.signInWithOTP(email: email, redirectTo: redirectTo)
-  }
-
-  func handleAuthCallback(url: URL) async throws -> String {
-    // Parses the auth callback and persists the session.
-    let session = try await client.auth.session(from: url)
-    return session.user.id.uuidString
-  }
-
   // MARK: Profile
 
   private struct ProfileRow: Codable {

@@ -10,8 +10,6 @@ protocol BackendClient {
 
   func signUp(email: String, password: String) async throws -> String
   func signIn(email: String, password: String) async throws -> String
-  func sendMagicLink(email: String, redirectTo: URL) async throws
-  func handleAuthCallback(url: URL) async throws -> String
   func signOut() async
 
   // MARK: Profile
