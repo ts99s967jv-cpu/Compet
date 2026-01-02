@@ -8,6 +8,7 @@ final class AppStore {
     static let account = "habitquest.account"
     static let profile = "habitquest.profile"
     static let theme = "habitquest.theme"
+    static let measurementSystem = "habitquest.measurementSystem"
     static let friends = "habitquest.friends"
     static let friendRequests = "habitquest.friendRequests"
     static let invites = "habitquest.invites"
@@ -27,6 +28,7 @@ final class AppStore {
   var account: Account?
   var profile: UserProfile?
   var theme: AppTheme = .system
+  var measurementSystem: MeasurementSystem = .metric
 
   var friends: [Friend] = []
   var friendRequests: [FriendRequest] = []
@@ -59,6 +61,7 @@ final class AppStore {
     account = load(Account.self, key: Keys.account)
     profile = load(UserProfile.self, key: Keys.profile)
     theme = load(AppTheme.self, key: Keys.theme) ?? .system
+    measurementSystem = load(MeasurementSystem.self, key: Keys.measurementSystem) ?? .metric
     friends = load([Friend].self, key: Keys.friends) ?? []
     friendRequests = load([FriendRequest].self, key: Keys.friendRequests) ?? []
     invites = load([GameInvite].self, key: Keys.invites) ?? []
@@ -75,6 +78,7 @@ final class AppStore {
     save(account, key: Keys.account)
     save(profile, key: Keys.profile)
     save(theme, key: Keys.theme)
+    save(measurementSystem, key: Keys.measurementSystem)
     save(friends, key: Keys.friends)
     save(friendRequests, key: Keys.friendRequests)
     save(invites, key: Keys.invites)

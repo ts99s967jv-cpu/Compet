@@ -25,6 +25,9 @@ final class SystemEventsService {
     settings.scoringMetrics = [.steps, .activeEnergyBurned]
     settings.opponentPolicy = .anyone
     settings.phoneOnlyMetrics = false
+    // Match the real season length (avoid default 7d).
+    let days = cal.dateComponents([.day], from: seasonStart, to: month.end).day ?? 30
+    settings.timeLimitDays = max(1, days)
 
     let systemUser = PublicUser(id: "system", displayName: "HabitQuest", handle: "habitquest", visibility: .public)
     let title = "Monthly champion — " + seasonStart.formatted(.dateTime.month(.wide)) + " " + seasonStart.formatted(.dateTime.year())
@@ -56,6 +59,9 @@ final class SystemEventsService {
     settings.scoringMetrics = [.steps, .activeEnergyBurned]
     settings.opponentPolicy = .anyone
     settings.phoneOnlyMetrics = false
+    // Match the real season length (avoid default 7d).
+    let days = cal.dateComponents([.day], from: seasonStart, to: year.end).day ?? 365
+    settings.timeLimitDays = max(1, days)
 
     let systemUser = PublicUser(id: "system", displayName: "HabitQuest", handle: "habitquest", visibility: .public)
     let title = "Yearly champion — " + seasonStart.formatted(.dateTime.year())

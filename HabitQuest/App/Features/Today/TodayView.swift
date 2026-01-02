@@ -71,7 +71,7 @@ struct TodayView: View {
             .dsCard()
           } else {
             ForEach(running) { game in
-              ActiveGameCard(game: game) {
+              ActiveGameCard(store: store, game: game) {
                 selectedActiveGameID = game.id
               }
             }

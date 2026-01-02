@@ -2,78 +2,84 @@ import SwiftUI
 
 struct SettingsView: View {
   @Bindable var store: AppStore
+  @Environment(\.colorScheme) private var scheme
 
   var body: some View {
     NavigationStack {
-      Form {
-        if let profile = store.profile {
-          Section("Profile") {
-            LabeledContent("Name", value: profile.displayName)
-            LabeledContent("Handle", value: "@\(profile.handle)")
+      ScrollView {
+        VStack(alignment: .leading, spacing: DS.Spacing.l) {
+          Text("Settings")
+            .font(DS.Typography.title)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.top, DS.Spacing.l)
 
-            Picker("Visibility", selection: Binding(
-              get: { store.profile?.visibility ?? .public },
+          // Habits
+          DSSectionHeaderRow(title: "Habits", systemImage: "checkmark.circle")
+          ProfileHabitsSection(store: store)
+            .padding(.horizontal, DS.Spacing.xl)
+
+          // Appearance
+          DSSectionHeaderRow(title: "Appearance", systemImage: "circle.lefthalf.filled")
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Text("Theme")
+              .font(DS.Typography.section)
+            Picker("Theme", selection: $store.theme) {
+              ForEach(AppTheme.allCases) { t in
+                Text(t.title).tag(t)
+              }
+            }
+            .pickerStyle(.segmented)
+            .tint(DS.Palette.accent)
+            .onChange(of: store.theme) { _, _ in store.saveAll() }
+          }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
+
+          // Fitness tracker
+          DSSectionHeaderRow(title: "Fitness tracker", systemImage: "checkmark.shield")
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Toggle("Fitness tracker", isOn: Binding(
+              get: { store.profile?.hasFitnessTracker ?? false },
               set: { newValue in
-                store.profile?.visibility = newValue
+                store.profile?.hasFitnessTracker = newValue
                 store.profile?.updatedAt = Date()
                 store.saveAll()
               }
-            )) {
-              ForEach(ProfileVisibility.allCases) { v in
-                Text(v.title).tag(v)
+            ))
+            Text("Used for fair matchmaking in games that require/avoid tracker users.")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+          }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
+          .opacity(store.profile == nil ? 0.55 : 1)
+          .disabled(store.profile == nil)
+
+          // Measurements
+          DSSectionHeaderRow(title: "Measurements", systemImage: "ruler")
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Text("Measurement system")
+              .font(DS.Typography.section)
+            Picker("Measurement system", selection: $store.measurementSystem) {
+              ForEach(MeasurementSystem.allCases) { m in
+                Text(m.title).tag(m)
               }
             }
+            .pickerStyle(.segmented)
+            .tint(DS.Palette.accent)
+            .onChange(of: store.measurementSystem) { _, _ in store.saveAll() }
+            Text("Used for displaying distances and other units (metric vs imperial).")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
           }
-        }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
 
-        Section("Theme") {
-          Picker("App theme", selection: $store.theme) {
-            ForEach(AppTheme.allCases) { theme in
-              Text(theme.title).tag(theme)
-            }
-          }
-          .onChange(of: store.theme) { _, _ in store.saveAll() }
+          Spacer(minLength: DS.Spacing.xxl)
         }
-
-        if let profile = store.profile {
-          Section("Power-ups inventory") {
-            ForEach(PowerUpID.allCases) { id in
-              HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                  HStack {
-                    Text(id.title)
-                    Spacer()
-                    Text(id.rarity.title)
-                      .font(.footnote)
-                      .foregroundStyle(.secondary)
-                  }
-                  Text(id.description)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                }
-                Text("×\(profile.inventory.count(of: id))")
-                  .font(.headline)
-                  .monospacedDigit()
-              }
-              .padding(.vertical, 2)
-            }
-
-            Button("Grant demo power-ups") {
-              InventoryService(store: store).grantDemoPack()
-            }
-          }
-        }
-
-        Section {
-          Button("Sign out", role: .destructive) {
-            Task {
-              await Backend.shared.signOut()
-              store.signOut()
-            }
-          }
-        }
+        .padding(.bottom, DS.Spacing.xxl)
       }
-      .navigationTitle("Settings")
+      .dsScreenBackground()
     }
   }
 }

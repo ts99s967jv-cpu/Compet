@@ -16,7 +16,9 @@ struct ProfileView: View {
           .padding(.horizontal, DS.Spacing.xl)
           .padding(.top, DS.Spacing.l)
 
-        ProfileHabitsSection(store: store)
+        DSSectionHeaderRow(title: "Fitness ELO", systemImage: "gauge.with.dots.needle.67percent")
+
+        FitnessEloCard(store: store, isRefreshing: $isRefreshingElo)
           .padding(.horizontal, DS.Spacing.xl)
 
         DSSectionHeaderRow(title: "Health stats", systemImage: "heart.text.square")
@@ -68,16 +70,25 @@ struct ProfileView: View {
           .padding(.horizontal, DS.Spacing.xl)
         }
 
-        DSSectionHeaderRow(title: "Fitness ELO", systemImage: "gauge.with.dots.needle.67percent")
+        DSSectionHeaderRow(title: "Power-ups", systemImage: "sparkles")
 
-        FitnessEloCard(store: store, isRefreshing: $isRefreshingElo)
-          .padding(.horizontal, DS.Spacing.xl)
+        VStack(spacing: DS.Spacing.m) {
+          if let profile = store.profile {
+            InventoryCard(store: store, profile: profile)
+              .padding(.horizontal, DS.Spacing.xl)
+          } else {
+            Text("Sign in to manage your profile.")
+              .font(DS.Typography.body)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .padding(.horizontal, DS.Spacing.xl)
+          }
+        }
 
-        DSSectionHeaderRow(title: "Friends", systemImage: "person.2")
+        DSSectionHeaderRow(title: "Friend search", systemImage: "magnifyingglass")
 
         VStack(alignment: .leading, spacing: DS.Spacing.s) {
           HStack {
-            Text("Friends")
+            Text("Find people")
               .font(DS.Typography.section)
             Spacer()
             Text("\(store.friends.count)")
@@ -110,25 +121,9 @@ struct ProfileView: View {
         .dsCard()
         .padding(.horizontal, DS.Spacing.xl)
 
-        DSSectionHeaderRow(title: "Account", systemImage: "person.crop.circle")
+        DSSectionHeaderRow(title: "Log out", systemImage: "rectangle.portrait.and.arrow.right")
 
         VStack(alignment: .leading, spacing: DS.Spacing.s) {
-          Button {
-            showEditProfile = true
-          } label: {
-            HStack {
-              Text("Edit profile")
-                .font(DS.Typography.body.weight(.semibold))
-              Spacer()
-              Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(DS.Palette.subtext(scheme))
-            }
-          }
-          .disabled(store.profile == nil)
-
-          Divider().overlay(DS.Palette.separator(scheme))
-
           Button(role: .destructive) {
             store.signOut()
           } label: {
@@ -143,57 +138,6 @@ struct ProfileView: View {
         }
         .dsCard()
         .padding(.horizontal, DS.Spacing.xl)
-
-        DSSectionHeaderRow(title: "Appearance", systemImage: "circle.lefthalf.filled")
-
-        VStack(alignment: .leading, spacing: DS.Spacing.s) {
-          Text("Theme")
-            .font(DS.Typography.section)
-          Picker("Theme", selection: $store.theme) {
-            ForEach(AppTheme.allCases) { t in
-              Text(t.title).tag(t)
-            }
-          }
-          .pickerStyle(.segmented)
-          .tint(DS.Palette.accent)
-          .onChange(of: store.theme) { _, _ in store.saveAll() }
-        }
-        .dsCard()
-        .padding(.horizontal, DS.Spacing.xl)
-
-        DSSectionHeaderRow(title: "Fairness", systemImage: "checkmark.shield")
-
-        if store.profile != nil {
-          VStack(alignment: .leading, spacing: DS.Spacing.s) {
-            Toggle("Fitness tracker", isOn: Binding(
-              get: { store.profile?.hasFitnessTracker ?? false },
-              set: { newValue in
-                store.profile?.hasFitnessTracker = newValue
-                store.profile?.updatedAt = Date()
-                store.saveAll()
-              }
-            ))
-            Text("Used for fair matchmaking in games that require/avoid tracker users.")
-              .font(DS.Typography.caption)
-              .foregroundStyle(DS.Palette.subtext(scheme))
-          }
-          .dsCard()
-          .padding(.horizontal, DS.Spacing.xl)
-        }
-
-        DSSectionHeaderRow(title: "Power-ups", systemImage: "sparkles")
-
-        VStack(spacing: DS.Spacing.m) {
-          if let profile = store.profile {
-            InventoryCard(store: store, profile: profile)
-              .padding(.horizontal, DS.Spacing.xl)
-          } else {
-            Text("Sign in to manage your profile.")
-              .font(DS.Typography.body)
-              .foregroundStyle(DS.Palette.subtext(scheme))
-              .padding(.horizontal, DS.Spacing.xl)
-          }
-        }
 
         Spacer(minLength: DS.Spacing.xxl)
       }

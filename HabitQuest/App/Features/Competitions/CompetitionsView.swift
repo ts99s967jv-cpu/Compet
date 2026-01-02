@@ -64,7 +64,7 @@ struct CompetitionsView: View {
               }
 
               ForEach(activeGames) { game in
-                ActiveGameCard(game: game) {
+                ActiveGameCard(store: store, game: game) {
                   selectedActiveGameID = game.id
                 }
                 .padding(.horizontal, DS.Spacing.xl)
@@ -445,7 +445,7 @@ private struct PublicGameCard: View {
             .monospacedDigit()
         }
 
-        Text("\(game.settings.activity.title) • \(game.settings.timeLimitDays)d • \(game.settings.winCondition.title)")
+        Text(gameSubtitleLine)
           .font(DS.Typography.caption)
           .foregroundStyle(DS.Palette.subtext(scheme))
           .lineLimit(2)
@@ -513,6 +513,18 @@ private struct PublicGameCard: View {
     return "\(game.players.count)/\(game.maxPlayers)"
   }
 
+  private var gameSubtitleLine: String {
+    if variant == .systemEvent {
+      let endsAt = seasonEndsAt(game)
+      return "\(game.settings.activity.title) • \(game.settings.winCondition.title) • Season ends \(endsAt.formatted(date: .abbreviated, time: .omitted))"
+    }
+    return "\(game.settings.activity.title) • \(game.settings.timeLimitDays)d • \(game.settings.winCondition.title)"
+  }
+
+  private func seasonEndsAt(_ game: PublicGame) -> Date {
+    game.createdAt.addingTimeInterval(TimeInterval(game.settings.timeLimitDays) * 24 * 60 * 60).addingTimeInterval(-1)
+  }
+
   enum Variant: String {
     case systemEvent
     case joined
@@ -553,7 +565,12 @@ private struct PublicGameDetailSheet: View {
               Text(game.title)
                 .font(DS.Typography.title)
 
-              Text("\(game.settings.activity.title) • \(game.settings.timeLimitDays)d • \(game.settings.winCondition.title) • Score: \(game.settings.scoringSummary)")
+              if game.visibility == .systemEvent {
+                let endsAt = game.createdAt.addingTimeInterval(TimeInterval(game.settings.timeLimitDays) * 24 * 60 * 60).addingTimeInterval(-1)
+                Text("\(game.settings.activity.title) • \(game.settings.winCondition.title) • Season ends \(endsAt.formatted(date: .abbreviated, time: .omitted)) • Score: \(game.settings.scoringSummary)")
+              } else {
+                Text("\(game.settings.activity.title) • \(game.settings.timeLimitDays)d • \(game.settings.winCondition.title) • Score: \(game.settings.scoringSummary)")
+              }
                 .font(DS.Typography.body)
                 .foregroundStyle(DS.Palette.subtext(scheme))
             }

@@ -325,8 +325,15 @@ final class ActiveGamesService {
       if var elim = existing.elimination {
         elim.cadence = cadence
         elim.endsAt = seasonEnd
-        // Do NOT rewind roundStartedAt; keep whichever is later.
-        if roundStart > elim.roundStartedAt {
+        // System events are authoritative: if the stored round is out-of-sync, snap back to the computed round.
+        // This fixes cases where older persisted data had the wrong cadence/roundIndex (e.g. huge "round 4052").
+        let roundIndexDelta = abs(elim.roundIndex - roundIndex)
+        let timeSkew = abs(elim.roundStartedAt.timeIntervalSince(roundStart))
+        if elim.roundStartedAt > now || elim.roundStartedAt < seasonStart.addingTimeInterval(-24 * 60 * 60) || roundIndexDelta > 2 || timeSkew > 2 {
+          elim.roundStartedAt = roundStart
+          elim.roundIndex = roundIndex
+        } else if roundStart > elim.roundStartedAt {
+          // Normal forward-only update.
           elim.roundStartedAt = roundStart
           elim.roundIndex = max(elim.roundIndex, roundIndex)
         }
