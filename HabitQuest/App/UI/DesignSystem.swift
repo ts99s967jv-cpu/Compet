@@ -42,8 +42,8 @@ enum DS {
   }
 
   enum Palette {
-    // Primary accent (health green)
-    static let accent = Color(hex: 0x2ECC71)
+    // Primary accent (muted pastel green)
+    static let accent = Color(hex: 0x63B88C)
 
     // Light mode
     static let lightBackground = Color.white
@@ -52,12 +52,12 @@ enum DS {
     static let lightText = Color(hex: 0x0F1720)
     static let lightSubtext = Color(hex: 0x5B6772)
 
-    // Dark mode (near-black with subtle blue-green tint)
-    static let darkBackground = Color(hex: 0x071315)
-    static let darkSurface = Color(hex: 0x0E1E20) // muted teal-gray
-    static let darkSeparator = Color(hex: 0x163033)
-    static let darkText = Color(hex: 0xE6F0F0) // avoid harsh white
-    static let darkSubtext = Color(hex: 0x98ACAE)
+    // Dark mode (soft blue-grey, avoid "terminal black")
+    static let darkBackground = Color(hex: 0x0B1A2A)
+    static let darkSurface = Color(hex: 0x12243A) // slightly lighter for elevation
+    static let darkSeparator = Color(hex: 0x233D5B)
+    static let darkText = Color(hex: 0xE6EEF8) // slightly cool off-white
+    static let darkSubtext = Color(hex: 0xA6B6C9)
 
     // Feedback
     static let danger = Color(hex: 0xE45B4A) // muted red (avoid neon)
