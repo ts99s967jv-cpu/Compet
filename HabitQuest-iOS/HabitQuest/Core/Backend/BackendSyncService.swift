@@ -36,7 +36,8 @@ final class BackendSyncService {
 
       // Games
       let publicGames = try await backend.listPublicGames()
-      store.publicGames = publicGames
+      // Apply client-side hide list (leaving a lobby removes it from your UI).
+      store.publicGames = publicGames.filter { !store.hiddenPublicGameIDs.contains($0.id) }
       store.saveAll()
     } catch {
       // Keep local state if backend fails (offline / misconfigured).

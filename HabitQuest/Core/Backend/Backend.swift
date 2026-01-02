@@ -34,5 +34,7 @@ final class LocalOnlyBackendClient: BackendClient {
   func joinPublicGame(gameID: String) async throws {}
   func leavePublicGame(gameID: String) async throws {}
   func startPublicGameNow(gameID: String) async throws {}
+  func closePublicGame(gameID: String) async throws {}
+  func deletePublicGame(gameID: String) async throws {}
 }
 

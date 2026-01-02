@@ -121,14 +121,8 @@ final class PublicGamesService {
     guard var game = store.publicGames.first(where: { $0.id == gameID }) else { return }
 
     game.players.removeAll { $0.user.id == me.id }
-    if game.players.isEmpty {
-      store.removePublicGame(gameID: game.id)
-      return
-    }
-    if game.status == .started, game.players.count < game.maxPlayers {
-      game.status = .open
-    }
-    store.updatePublicGame(game)
+    // Leaving should remove the lobby from your UI.
+    store.hidePublicGame(gameID: game.id)
 
     if backend.isAvailable, game.visibility != .systemEvent {
       Task {
@@ -136,16 +130,55 @@ final class PublicGamesService {
           try await backend.leavePublicGame(gameID: gameID)
           let games = try await backend.listPublicGames()
           await MainActor.run {
-            store.publicGames = games
+            store.publicGames = games.filter { !store.hiddenPublicGameIDs.contains($0.id) }
             store.saveAll()
           }
-        } catch {}
+        } catch {
+          // Keep it hidden locally; backend may have rejected the leave due to RLS.
+          await MainActor.run {
+            store.saveAll()
+          }
+        }
       }
     }
 
     // For system events, also remove from the active season game (prototype).
     if game.visibility == .systemEvent {
       ActiveGamesService(store: store).removePlayerFromActiveGame(activeGameID: "ag_" + game.id, userID: me.id)
+    }
+  }
+
+  func close(gameID: String) {
+    guard let meID = store.profile?.id else { return }
+    guard let game = store.publicGames.first(where: { $0.id == gameID }) else { return }
+    guard game.createdBy.id == meID else { return }
+    store.hidePublicGame(gameID: gameID)
+    if backend.isAvailable, game.visibility != .systemEvent {
+      Task {
+        try? await backend.closePublicGame(gameID: gameID)
+        let games = (try? await backend.listPublicGames()) ?? []
+        await MainActor.run {
+          store.publicGames = games.filter { !store.hiddenPublicGameIDs.contains($0.id) }
+          store.saveAll()
+        }
+      }
+    }
+  }
+
+  func delete(gameID: String) {
+    guard let meID = store.profile?.id else { return }
+    guard let game = store.publicGames.first(where: { $0.id == gameID }) else { return }
+    guard game.createdBy.id == meID else { return }
+    store.hidePublicGame(gameID: gameID)
+    if backend.isAvailable, game.visibility != .systemEvent {
+      Task {
+        try? await backend.deletePublicGame(gameID: gameID)
+        let games = (try? await backend.listPublicGames()) ?? []
+        await MainActor.run {
+          store.publicGames = games.filter { !store.hiddenPublicGameIDs.contains($0.id) }
+          store.saveAll()
+        }
+      }
     }
   }
 

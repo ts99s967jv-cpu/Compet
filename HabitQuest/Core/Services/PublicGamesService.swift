@@ -40,6 +40,18 @@ final class PublicGamesService {
     store.addPublicGame(game)
   }
 
+  func leave(gameID: String) {
+    store.hidePublicGame(gameID: gameID)
+  }
+
+  func close(gameID: String) {
+    store.hidePublicGame(gameID: gameID)
+  }
+
+  func delete(gameID: String) {
+    store.hidePublicGame(gameID: gameID)
+  }
+
   func join(gameID: String) {
     guard let profile = store.profile else { return }
     let me = profile.asPublicUser()

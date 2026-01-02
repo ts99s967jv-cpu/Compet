@@ -78,7 +78,7 @@ struct CompetitionsView: View {
 
           VStack(spacing: DS.Spacing.m) {
             let meID = store.profile?.id ?? ""
-            let privateLobbies = store.publicGames.filter { $0.visibility == .private && ($0.contains(userID: meID) || $0.createdBy.id == meID) }
+            let privateLobbies = store.publicGames.filter { $0.visibility == .private && $0.status != .finished && ($0.contains(userID: meID) || $0.createdBy.id == meID) }
             let basePublic = store.publicGames.filter { $0.visibility == .public && $0.status != .finished }
 
             let filtered = basePublic
@@ -698,6 +698,32 @@ private struct PublicGameDetailSheet: View {
               .buttonStyle(.borderedProminent)
               .tint(DS.Palette.accent)
               .padding(.horizontal, DS.Spacing.xl)
+            }
+
+            if isOwner && game.visibility != .systemEvent {
+              HStack(spacing: DS.Spacing.m) {
+                Button(role: .destructive) {
+                  PublicGamesService(store: store).delete(gameID: game.id)
+                  dismiss()
+                } label: {
+                  Text("Delete game")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, DS.Spacing.m)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                  PublicGamesService(store: store).close(gameID: game.id)
+                  dismiss()
+                } label: {
+                  Text("Close game")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, DS.Spacing.m)
+                }
+                .buttonStyle(.bordered)
+              }
+              .padding(.horizontal, DS.Spacing.xl)
+              .padding(.top, DS.Spacing.s)
             }
 
             Button {

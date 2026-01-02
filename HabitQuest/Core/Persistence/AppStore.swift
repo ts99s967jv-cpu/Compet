@@ -17,6 +17,7 @@ final class AppStore {
     static let clanBattles = "habitquest.clanBattles"
     static let habits = "habitquest.habits"
     static let publicGames = "habitquest.publicGames"
+    static let hiddenPublicGameIDs = "habitquest.hiddenPublicGameIDs"
     static let activeGames = "habitquest.activeGames"
     static let gameScores = "habitquest.gameScores"
   }
@@ -40,6 +41,7 @@ final class AppStore {
 
   var habits: [Habit] = []
   var publicGames: [PublicGame] = []
+  var hiddenPublicGameIDs: Set<String> = []
   var activeGames: [ActiveGame] = []
   var gameScores: [GameScore] = []
 
@@ -70,6 +72,7 @@ final class AppStore {
     clanBattles = load([ClanBattle].self, key: Keys.clanBattles) ?? []
     habits = load([Habit].self, key: Keys.habits) ?? []
     publicGames = load([PublicGame].self, key: Keys.publicGames) ?? []
+    hiddenPublicGameIDs = Set(load([String].self, key: Keys.hiddenPublicGameIDs) ?? [])
     activeGames = load([ActiveGame].self, key: Keys.activeGames) ?? []
     gameScores = load([GameScore].self, key: Keys.gameScores) ?? []
   }
@@ -87,6 +90,7 @@ final class AppStore {
     save(clanBattles, key: Keys.clanBattles)
     save(habits, key: Keys.habits)
     save(publicGames, key: Keys.publicGames)
+    save(Array(hiddenPublicGameIDs), key: Keys.hiddenPublicGameIDs)
     save(activeGames, key: Keys.activeGames)
     save(gameScores, key: Keys.gameScores)
   }
@@ -102,8 +106,16 @@ final class AppStore {
     clanBattles = []
     habits = []
     publicGames = []
+    hiddenPublicGameIDs = []
     activeGames = []
     gameScores = []
+    saveAll()
+  }
+
+  func hidePublicGame(gameID: String) {
+    hiddenPublicGameIDs.insert(gameID)
+    publicGames.removeAll { $0.id == gameID }
+    activeGames.removeAll { $0.id == "ag_" + gameID }
     saveAll()
   }
 

@@ -459,6 +459,28 @@ final class SupabaseBackendClient: BackendClient {
       .execute()
   }
 
+  func closePublicGame(gameID: String) async throws {
+    _ = try await client
+      .from("public_games")
+      .update(["status": "finished"])
+      .eq("id", value: gameID)
+      .execute()
+  }
+
+  func deletePublicGame(gameID: String) async throws {
+    // Remove players first (in case cascading deletes aren't configured).
+    _ = try await client
+      .from("public_game_players")
+      .delete()
+      .eq("game_id", value: gameID)
+      .execute()
+    _ = try await client
+      .from("public_games")
+      .delete()
+      .eq("id", value: gameID)
+      .execute()
+  }
+
   // MARK: Mapping
 
   private func mapProfile(_ row: ProfileRow) -> UserProfile {

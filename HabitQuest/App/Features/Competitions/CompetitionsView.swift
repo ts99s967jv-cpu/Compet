@@ -77,7 +77,7 @@ struct CompetitionsView: View {
 
           VStack(spacing: DS.Spacing.m) {
             let meID = store.profile?.id ?? ""
-            let privateLobbies = store.publicGames.filter { $0.visibility == .private && ($0.contains(userID: meID) || $0.createdBy.id == meID) }
+            let privateLobbies = store.publicGames.filter { $0.visibility == .private && $0.status != .finished && ($0.contains(userID: meID) || $0.createdBy.id == meID) }
             let basePublic = store.publicGames.filter { $0.visibility == .public && $0.status != .finished }
 
             let filtered = basePublic

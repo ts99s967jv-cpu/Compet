@@ -27,7 +27,7 @@ final class BackendSyncService {
       store.setFriendRequests(try await backend.listFriendRequests())
 
       let publicGames = try await backend.listPublicGames()
-      store.publicGames = publicGames
+      store.publicGames = publicGames.filter { !store.hiddenPublicGameIDs.contains($0.id) }
       store.saveAll()
     } catch {}
   }

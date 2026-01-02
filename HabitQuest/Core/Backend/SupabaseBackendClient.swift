@@ -356,6 +356,27 @@ final class SupabaseBackendClient: BackendClient {
       .execute()
   }
 
+  func closePublicGame(gameID: String) async throws {
+    _ = try await client
+      .from("public_games")
+      .update(["status": "finished"])
+      .eq("id", value: gameID)
+      .execute()
+  }
+
+  func deletePublicGame(gameID: String) async throws {
+    _ = try await client
+      .from("public_game_players")
+      .delete()
+      .eq("game_id", value: gameID)
+      .execute()
+    _ = try await client
+      .from("public_games")
+      .delete()
+      .eq("id", value: gameID)
+      .execute()
+  }
+
   private func mapProfile(_ row: ProfileRow) -> UserProfile {
     let quantities: [PowerUpID: Int] = row.inventory.reduce(into: [:]) { acc, kv in
       let (key, value) = kv
