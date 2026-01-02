@@ -38,6 +38,7 @@
 		1045B556FEA74EE49826D41F /* GameInvite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C0D8E8529C8445C98A56B59 /* GameInvite.swift */; };
 		34ABA73CD4F2487BB4C381FC /* GameSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB9947D78564B838F3A8EB2 /* GameSettings.swift */; };
 		1DAE4C0A8B5847C3937922D7 /* Gender.swift in Sources */ = {isa = PBXBuildFile; fileRef = BED8E64ACB424A8082C11F9C /* Gender.swift */; };
+		C5D4E3F2A1B0987E6D5C4B3A /* MeasurementSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6E5D4C3A2F1098E7D6C5B4A /* MeasurementSystem.swift */; };
 		13910BE3754E4A9681E43D71 /* Habit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85573FC0F77549DB892DF986 /* Habit.swift */; };
 		3A98AC5A1D644B52BC16CA09 /* PowerUp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3BC7BAC977C40B9BC8539FC /* PowerUp.swift */; };
 		1CE7C3C615684CA7B298404B /* ProfileVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD493D8D4AC14C56ADC0C166 /* ProfileVisibility.swift */; };
@@ -115,6 +116,7 @@
 		2C0D8E8529C8445C98A56B59 /* GameInvite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/GameInvite.swift"; sourceTree = "<group>"; };
 		BBB9947D78564B838F3A8EB2 /* GameSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/GameSettings.swift"; sourceTree = "<group>"; };
 		BED8E64ACB424A8082C11F9C /* Gender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/Gender.swift"; sourceTree = "<group>"; };
+		B6E5D4C3A2F1098E7D6C5B4A /* MeasurementSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/MeasurementSystem.swift"; sourceTree = "<group>"; };
 		85573FC0F77549DB892DF986 /* Habit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/Habit.swift"; sourceTree = "<group>"; };
 		F3BC7BAC977C40B9BC8539FC /* PowerUp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/PowerUp.swift"; sourceTree = "<group>"; };
 		AD493D8D4AC14C56ADC0C166 /* ProfileVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/ProfileVisibility.swift"; sourceTree = "<group>"; };
@@ -218,6 +220,7 @@
 				2C0D8E8529C8445C98A56B59 /* GameInvite.swift */,
 				BBB9947D78564B838F3A8EB2 /* GameSettings.swift */,
 				BED8E64ACB424A8082C11F9C /* Gender.swift */,
+				B6E5D4C3A2F1098E7D6C5B4A /* MeasurementSystem.swift */,
 				85573FC0F77549DB892DF986 /* Habit.swift */,
 				F3BC7BAC977C40B9BC8539FC /* PowerUp.swift */,
 				AD493D8D4AC14C56ADC0C166 /* ProfileVisibility.swift */,
@@ -376,6 +379,7 @@
 				6F5D426061B960D46EAD3FAC /* GameScore.swift in Sources */,
 				34ABA73CD4F2487BB4C381FC /* GameSettings.swift in Sources */,
 				1DAE4C0A8B5847C3937922D7 /* Gender.swift in Sources */,
+				C5D4E3F2A1B0987E6D5C4B3A /* MeasurementSystem.swift in Sources */,
 				13910BE3754E4A9681E43D71 /* Habit.swift in Sources */,
 				3A98AC5A1D644B52BC16CA09 /* PowerUp.swift in Sources */,
 				1CE7C3C615684CA7B298404B /* ProfileVisibility.swift in Sources */,
