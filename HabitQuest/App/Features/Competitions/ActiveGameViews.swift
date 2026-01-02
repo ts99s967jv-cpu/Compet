@@ -320,7 +320,7 @@ struct ActiveGameDetailSheet: View {
     if primaryView == .map {
       let map = game.settings.mapStyle.resolved(for: game.settings.activity)
       let maxScore = max(1, rowsDesc.first?.1 ?? 1)
-      GameMapTrackCard(
+      GameMapExplorerCard(
         title: game.title,
         subtitle: "\(subtitle(for: game)) • Ends in \(timeRemainingText(to: cutoff, now: now))",
         style: map,
@@ -444,7 +444,7 @@ struct ActiveGameDetailSheet: View {
 
     if primaryView == .map {
       let map = game.settings.mapStyle.resolved(for: game.settings.activity)
-      GameMapTrackCard(
+      GameMapExplorerCard(
         title: game.title,
         subtitle: "\(game.settings.activity.title) • Ends in \(timeRemainingText(to: endsAt, now: now))",
         style: map,
