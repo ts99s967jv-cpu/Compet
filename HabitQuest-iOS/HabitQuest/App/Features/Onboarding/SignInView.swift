@@ -218,7 +218,7 @@ Fix options:
             fitnessLevel: .beginner,
             visibility: .public,
             hasFitnessTracker: false,
-            fitnessElo: nil,
+            fitnessElo: Int(FitnessRatingConstants.defaultCohortMeanElo),
             fitnessEloUpdatedAt: nil,
             inventory: .empty,
             createdAt: now,

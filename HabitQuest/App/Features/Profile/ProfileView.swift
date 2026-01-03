@@ -492,13 +492,13 @@ private struct FitnessEloCard: View {
           Text("Fitness ELO")
             .font(DS.Typography.section)
 
-          Text("0–3000 • uses historical HealthKit trends")
+          Text("Competitive rating used for matchmaking")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
         }
         Spacer()
-        if let elo = store.profile?.fitnessElo, store.profile?.hasFitnessTracker == true {
-          Text("\(elo)")
+        if let profile = store.profile {
+          Text("\(profile.fitnessElo)")
             .font(DS.Typography.stat)
             .monospacedDigit()
         } else {
@@ -508,24 +508,30 @@ private struct FitnessEloCard: View {
         }
       }
 
-      if store.profile?.hasFitnessTracker != true {
-        Text("Requires a fitness tracker. Enable “Fitness tracker” to compute your ELO.")
-          .font(DS.Typography.body)
+      if let profile = store.profile {
+        let service = FitnessEloService(store: store)
+        let tier = service.tier(elo: profile.fitnessElo, age: profile.age)
+        let pct = service.agePercentileRank(elo: profile.fitnessElo, age: profile.age)
+        let pctText = "\(Int((pct * 100).rounded()))th percentile"
+        let range = service.recommendedMatchRange(elo: profile.fitnessElo)
+        let momentum = store.fitnessMomentum(days: 30) ?? 0
+
+        Text("Tier: \(tier) • Age rank: \(pctText)")
+          .font(DS.Typography.caption)
           .foregroundStyle(DS.Palette.subtext(scheme))
-      } else {
-        if let ts = store.profile?.fitnessEloUpdatedAt {
+
+        Text("Momentum (30d): \(momentum >= 0 ? "+" : "")\(momentum) • Matchmaking: \(range.lowerBound)–\(range.upperBound)")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+
+        if let ts = profile.fitnessEloUpdatedAt {
           Text("Updated \(ts.formatted(date: .abbreviated, time: .shortened))")
-            .font(DS.Typography.caption)
-            .foregroundStyle(DS.Palette.subtext(scheme))
-        } else {
-          Text("Not computed yet.")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
         }
 
-        if let elo = store.profile?.fitnessElo {
-          let range = FitnessEloService(store: store).recommendedMatchRange(elo: elo)
-          Text("Matchmaking target: \(range.lowerBound)–\(range.upperBound)")
+        if profile.hasFitnessTracker != true {
+          Text("Enable “Fitness tracker” to incorporate Apple Health data into your rating.")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
         }
@@ -541,7 +547,7 @@ private struct FitnessEloCard: View {
             if isRefreshing {
               ProgressView().tint(DS.Palette.accent)
             }
-            Text(isRefreshing ? "Updating…" : "Update Fitness ELO")
+            Text(isRefreshing ? "Updating…" : "Update rating")
               .frame(maxWidth: .infinity)
               .padding(.vertical, DS.Spacing.s)
           }

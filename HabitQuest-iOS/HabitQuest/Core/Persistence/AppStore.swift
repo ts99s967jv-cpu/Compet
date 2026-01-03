@@ -20,6 +20,10 @@ final class AppStore {
     static let hiddenPublicGameIDs = "habitquest.hiddenPublicGameIDs"
     static let activeGames = "habitquest.activeGames"
     static let gameScores = "habitquest.gameScores"
+    static let fitnessEloV2Migrated = "habitquest.fitnessEloV2Migrated"
+    static let fitnessEloV2ConfidenceOverride = "habitquest.fitnessEloV2ConfidenceOverride"
+    static let fitnessEloHistory = "habitquest.fitnessEloHistory"
+    static let fitnessRatingSnapshot = "habitquest.fitnessRatingSnapshot"
   }
 
   private let encoder = JSONEncoder()
@@ -46,6 +50,11 @@ final class AppStore {
   var hiddenPublicGameIDs: Set<String> = []
   var activeGames: [ActiveGame] = []
   var gameScores: [GameScore] = []
+
+  var didMigrateFitnessEloV2: Bool = false
+  var fitnessEloConfidenceOverride: Double?
+  var fitnessEloHistory: [String: Int] = [:]
+  var fitnessRatingSnapshot: FitnessRating?
 
   /// Ephemeral (not persisted) HealthKit-derived progress, keyed by habitID -> dayKey -> value.
   /// Used for auto-tracked habits like Steps so users don’t manually input Health data.
@@ -77,6 +86,10 @@ final class AppStore {
     hiddenPublicGameIDs = Set(load([String].self, key: Keys.hiddenPublicGameIDs) ?? [])
     activeGames = load([ActiveGame].self, key: Keys.activeGames) ?? []
     gameScores = load([GameScore].self, key: Keys.gameScores) ?? []
+    didMigrateFitnessEloV2 = load(Bool.self, key: Keys.fitnessEloV2Migrated) ?? false
+    fitnessEloConfidenceOverride = load(Double.self, key: Keys.fitnessEloV2ConfidenceOverride)
+    fitnessEloHistory = load([String: Int].self, key: Keys.fitnessEloHistory) ?? [:]
+    fitnessRatingSnapshot = load(FitnessRating.self, key: Keys.fitnessRatingSnapshot)
   }
 
   func saveAll() {
@@ -95,6 +108,10 @@ final class AppStore {
     save(Array(hiddenPublicGameIDs), key: Keys.hiddenPublicGameIDs)
     save(activeGames, key: Keys.activeGames)
     save(gameScores, key: Keys.gameScores)
+    save(didMigrateFitnessEloV2, key: Keys.fitnessEloV2Migrated)
+    save(fitnessEloConfidenceOverride, key: Keys.fitnessEloV2ConfidenceOverride)
+    save(fitnessEloHistory, key: Keys.fitnessEloHistory)
+    save(fitnessRatingSnapshot, key: Keys.fitnessRatingSnapshot)
   }
 
   func signOut() {
@@ -111,7 +128,50 @@ final class AppStore {
     hiddenPublicGameIDs = []
     activeGames = []
     gameScores = []
+    didMigrateFitnessEloV2 = false
+    fitnessEloConfidenceOverride = nil
+    fitnessEloHistory = [:]
+    fitnessRatingSnapshot = nil
     saveAll()
+  }
+
+  func recordFitnessElo(elo: Int, at date: Date = Date()) {
+    let key = dayKey(date)
+    fitnessEloHistory[key] = elo
+    pruneFitnessHistory(keepingDays: 60, now: date)
+    saveAll()
+  }
+
+  func fitnessMomentum(days: Int = 30, now: Date = Date()) -> Int? {
+    guard let today = fitnessEloHistory[dayKey(now)] else { return nil }
+    guard let pastDate = Calendar.current.date(byAdding: .day, value: -days, to: now) else { return nil }
+    let past = fitnessEloHistory[dayKey(pastDate)] ?? nearestFitnessElo(onOrBefore: pastDate)
+    guard let past else { return nil }
+    return today - past
+  }
+
+  private func nearestFitnessElo(onOrBefore date: Date) -> Int? {
+    for i in 0...60 {
+      guard let d = Calendar.current.date(byAdding: .day, value: -i, to: date) else { break }
+      if let v = fitnessEloHistory[dayKey(d)] { return v }
+    }
+    return nil
+  }
+
+  private func pruneFitnessHistory(keepingDays: Int, now: Date) {
+    guard let cutoff = Calendar.current.date(byAdding: .day, value: -keepingDays, to: now) else { return }
+    let cutoffKey = dayKey(cutoff)
+    fitnessEloHistory = fitnessEloHistory.filter { $0.key >= cutoffKey }
+  }
+
+  private func dayKey(_ date: Date) -> String {
+    let d = Calendar.current.startOfDay(for: date)
+    let f = DateFormatter()
+    f.calendar = Calendar(identifier: .gregorian)
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.timeZone = TimeZone(secondsFromGMT: 0)
+    f.dateFormat = "yyyy-MM-dd"
+    return f.string(from: d)
   }
 
   func hidePublicGame(gameID: String) {

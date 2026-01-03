@@ -396,7 +396,7 @@ final class SupabaseBackendClient: BackendClient {
       fitnessLevel: FitnessLevel(rawValue: row.fitness_level) ?? .beginner,
       visibility: ProfileVisibility(rawValue: row.visibility) ?? .public,
       hasFitnessTracker: row.has_fitness_tracker,
-      fitnessElo: row.fitness_elo,
+      fitnessElo: row.fitness_elo ?? Int(FitnessRatingConstants.defaultCohortMeanElo),
       fitnessEloUpdatedAt: row.fitness_elo_updated_at,
       inventory: UserInventory(quantities: quantities),
       createdAt: row.created_at,
