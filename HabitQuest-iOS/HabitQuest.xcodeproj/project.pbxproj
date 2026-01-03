@@ -46,6 +46,8 @@
 		D0A1B2C3D4E5F60718293A4F /* FitnessNorms.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A1B2C3D4E5F60718293A4F /* FitnessNorms.swift */; };
 		D0A1B2C3D4E5F60718293A50 /* FitnessRatingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A1B2C3D4E5F60718293A50 /* FitnessRatingEngine.swift */; };
 		D0A1B2C3D4E5F60718293A51 /* FitnessRatingMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A1B2C3D4E5F60718293A51 /* FitnessRatingMigration.swift */; };
+		D0A1B2C3D4E5F60718293A52 /* SeasonWaveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A1B2C3D4E5F60718293A52 /* SeasonWaveService.swift */; };
+		D0A1B2C3D4E5F60718293A53 /* CountdownFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A1B2C3D4E5F60718293A53 /* CountdownFormatter.swift */; };
 		13910BE3754E4A9681E43D71 /* Habit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85573FC0F77549DB892DF986 /* Habit.swift */; };
 		3A98AC5A1D644B52BC16CA09 /* PowerUp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3BC7BAC977C40B9BC8539FC /* PowerUp.swift */; };
 		1CE7C3C615684CA7B298404B /* ProfileVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD493D8D4AC14C56ADC0C166 /* ProfileVisibility.swift */; };
@@ -131,6 +133,8 @@
 		C0A1B2C3D4E5F60718293A4F /* FitnessNorms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/FitnessRating/FitnessNorms.swift"; sourceTree = "<group>"; };
 		C0A1B2C3D4E5F60718293A50 /* FitnessRatingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/FitnessRating/FitnessRatingEngine.swift"; sourceTree = "<group>"; };
 		C0A1B2C3D4E5F60718293A51 /* FitnessRatingMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/FitnessRating/FitnessRatingMigration.swift"; sourceTree = "<group>"; };
+		C0A1B2C3D4E5F60718293A52 /* SeasonWaveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/SeasonWaveService.swift"; sourceTree = "<group>"; };
+		C0A1B2C3D4E5F60718293A53 /* CountdownFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Services/CountdownFormatter.swift"; sourceTree = "<group>"; };
 		85573FC0F77549DB892DF986 /* Habit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/Habit.swift"; sourceTree = "<group>"; };
 		F3BC7BAC977C40B9BC8539FC /* PowerUp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/PowerUp.swift"; sourceTree = "<group>"; };
 		AD493D8D4AC14C56ADC0C166 /* ProfileVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/ProfileVisibility.swift"; sourceTree = "<group>"; };
@@ -253,6 +257,8 @@
 				E26F18912E754A96BAE668CF /* InventoryService.swift */,
 				D1A8F58A92674173B4C52554 /* PublicGamesService.swift */,
 				B1EBFD390C614ECB8318F796 /* SystemEventsService.swift */,
+				C0A1B2C3D4E5F60718293A52 /* SeasonWaveService.swift */,
+				C0A1B2C3D4E5F60718293A53 /* CountdownFormatter.swift */,
 				6D7842629AE9495B933A618C /* UserDirectoryService.swift */,
 				94362FAD014149A88E90AC46 /* Info.plist */,
 				0111ECC246CC491B9D7E2EA7 /* HabitQuest.entitlements */,
@@ -422,6 +428,8 @@
 				8D0F9C97B8A2476082EB7B6B /* InventoryService.swift in Sources */,
 				1D703D0EAF684373AF3EA291 /* PublicGamesService.swift in Sources */,
 				895CD3436CCC4F9D854AF8A4 /* SystemEventsService.swift in Sources */,
+				D0A1B2C3D4E5F60718293A52 /* SeasonWaveService.swift in Sources */,
+				D0A1B2C3D4E5F60718293A53 /* CountdownFormatter.swift in Sources */,
 				231A12A0AC974F88BEE6244E /* UserDirectoryService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
