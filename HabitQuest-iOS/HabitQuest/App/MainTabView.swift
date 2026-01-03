@@ -12,6 +12,10 @@ struct MainTabView: View {
       CompetitionsView(store: store)
         .tabItem { Label("Competitions", systemImage: "trophy") }
 
+      NotificationsView(store: store)
+        .tabItem { Label("Notifications", systemImage: "bell") }
+        .badge(store.unreadNotificationsCount == 0 ? nil : Text("\(store.unreadNotificationsCount)"))
+
       ProfileView(store: store)
         .tabItem { Label("Profile", systemImage: "person.crop.circle") }
 

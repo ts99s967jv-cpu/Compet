@@ -18,6 +18,10 @@ final class BackendSyncService {
   func syncAll() async {
     guard backend.isAvailable else { return }
     do {
+      let now = Date()
+      let previousFriendRequestIDs = Set(store.friendRequests.map { $0.id })
+      let previousInviteIDs = Set(store.invites.map { $0.id })
+
       // Only overwrite auth-scoped state when we actually have a backend session.
       if backend.currentUserID != nil {
         // Profile
@@ -39,7 +43,13 @@ final class BackendSyncService {
       // Apply client-side hide list (leaving a lobby removes it from your UI).
       store.publicGames = publicGames.filter { !store.hiddenPublicGameIDs.contains($0.id) }
       // Promote any started games I'm in into ActiveGames so they actually "run".
-      await promoteStartedPublicGamesToActiveGames(now: Date())
+      await promoteStartedPublicGamesToActiveGames(now: now)
+
+      // Notifications (inbox + optional local notifications)
+      let notifier = NotificationsService(store: store)
+      notifier.notifyNewFriendRequests(previousIDs: previousFriendRequestIDs, now: now)
+      notifier.notifyNewInvites(previousIDs: previousInviteIDs, now: now)
+
       store.saveAll()
     } catch {
       // Keep local state if backend fails (offline / misconfigured).

@@ -18,6 +18,10 @@ final class BackendSyncService {
   func syncAll() async {
     guard backend.isAvailable else { return }
     do {
+      let now = Date()
+      let previousFriendRequestIDs = Set(store.friendRequests.map { $0.id })
+      let previousInviteIDs = Set(store.invites.map { $0.id })
+
       store.profile = try await backend.fetchMyProfile()
 
       let friends = try await backend.listFriends()
@@ -28,7 +32,13 @@ final class BackendSyncService {
 
       let publicGames = try await backend.listPublicGames()
       store.publicGames = publicGames.filter { !store.hiddenPublicGameIDs.contains($0.id) }
-      await promoteStartedPublicGamesToActiveGames(now: Date())
+      await promoteStartedPublicGamesToActiveGames(now: now)
+
+      // Notifications (inbox)
+      let notifier = NotificationsService(store: store)
+      notifier.notifyNewFriendRequests(previousIDs: previousFriendRequestIDs, now: now)
+      notifier.notifyNewInvites(previousIDs: previousInviteIDs, now: now)
+
       store.saveAll()
     } catch {}
   }

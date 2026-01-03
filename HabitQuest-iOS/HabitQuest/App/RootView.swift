@@ -34,6 +34,8 @@ struct RootView: View {
           // Don't block app usage; user may deny permissions.
         }
       }
+      // Request Notifications permission once (optional; enables device alerts for inbox items).
+      await LocalNotificationService.shared.requestAuthorizationIfNeeded(store: store)
     }
   }
 }

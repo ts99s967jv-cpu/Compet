@@ -51,9 +51,78 @@ final class GameScoreSyncService {
         updatedAt: now
       )
       store.upsertGameScore(score)
+
+      // In-app notifications: milestones + lead changes (best-effort).
+      maybeNotifyMilestone(game: game, score: score)
+      maybeNotifyLeadChange(game: game, roundIndex: roundIndex)
     } catch {
       // No HealthKit available/authorized → leave existing score (if any).
     }
+  }
+
+  private func maybeNotifyMilestone(game: ActiveGame, score: GameScore) {
+    let interval = milestoneInterval(for: game.settings.scoringMetrics)
+    guard interval > 0 else { return }
+    guard score.points > 0 else { return }
+
+    let key = "\(score.activeGameID)|\(score.roundIndex)"
+    let last = store.lastMilestoneNotifiedPointsByKey[key] ?? 0
+    let next = ((last / interval) + 1) * interval
+    guard score.points >= next else { return }
+
+    let reached = (score.points / interval) * interval
+    store.lastMilestoneNotifiedPointsByKey[key] = reached
+    store.saveAll()
+
+    let headline = game.title
+    let body = "You reached \(reached) points."
+    store.addNotification(AppNotification(
+      kind: .gameMilestone,
+      headline: headline,
+      body: body,
+      relatedActiveGameID: score.activeGameID
+    ))
+  }
+
+  private func milestoneInterval(for metrics: [ScoreMetric]) -> Int {
+    if metrics.contains(.steps) { return 1_000 }
+    if metrics.contains(.activeEnergyBurned) { return 200 }
+    if metrics.contains(.sleepScore) { return 10 }
+    return 1_000
+  }
+
+  private func maybeNotifyLeadChange(game: ActiveGame, roundIndex: Int) {
+    let scores = store.gameScores.filter { $0.activeGameID == game.id && $0.roundIndex == roundIndex }
+    let uniqueUsers = Set(scores.map { $0.userID })
+    guard uniqueUsers.count >= 2 else { return }
+
+    guard let top = scores.max(by: { $0.points < $1.points }) else { return }
+    let newLeader = top.userID
+    let oldLeader = store.lastLeaderUserIDByActiveGameID[game.id]
+    guard oldLeader != newLeader else { return }
+
+    store.lastLeaderUserIDByActiveGameID[game.id] = newLeader
+    store.saveAll()
+
+    let meID = store.profile?.id
+    let leaderName = game.players.first(where: { $0.id == newLeader })?.displayName ?? "Someone"
+    let headline = game.title
+    let body: String
+    if newLeader == meID {
+      body = "You took the lead."
+    } else if oldLeader == meID {
+      body = "\(leaderName) took the lead."
+    } else {
+      body = "\(leaderName) is now in the lead."
+    }
+
+    store.addNotification(AppNotification(
+      kind: .gameLeadChange,
+      headline: headline,
+      body: body,
+      relatedActiveGameID: game.id,
+      relatedUserID: newLeader
+    ))
   }
 
   private func roundWindow(for game: ActiveGame, now: Date) -> (roundIndex: Int, start: Date) {

@@ -25,6 +25,10 @@ final class AppStore {
     static let fitnessEloHistory = "habitquest.fitnessEloHistory"
     static let fitnessRatingSnapshot = "habitquest.fitnessRatingSnapshot"
     static let didRequestHealthKitAuthorization = "habitquest.didRequestHealthKitAuthorization"
+    static let notifications = "habitquest.notifications"
+    static let didRequestNotificationAuthorization = "habitquest.didRequestNotificationAuthorization"
+    static let lastLeaderUserIDByActiveGameID = "habitquest.lastLeaderUserIDByActiveGameID"
+    static let lastMilestoneNotifiedPointsByKey = "habitquest.lastMilestoneNotifiedPointsByKey"
   }
 
   private let encoder = JSONEncoder()
@@ -60,6 +64,12 @@ final class AppStore {
   var fitnessRatingSnapshot: FitnessRating?
   /// One-time guard so we request HealthKit permissions up-front only once.
   var didRequestHealthKitAuthorization: Bool = false
+  var notifications: [AppNotification] = []
+  var didRequestNotificationAuthorization: Bool = false
+  /// activeGameID -> last leader userID (best-effort, only when we have enough scores).
+  var lastLeaderUserIDByActiveGameID: [String: String] = [:]
+  /// Composite key "activeGameID|roundIndex" -> last milestone points notified.
+  var lastMilestoneNotifiedPointsByKey: [String: Int] = [:]
 
   /// Ephemeral (not persisted) HealthKit-derived progress, keyed by habitID -> dayKey -> value.
   /// Used for auto-tracked habits like Steps so users don’t manually input Health data.
@@ -96,6 +106,10 @@ final class AppStore {
     fitnessEloHistory = load([String: Int].self, key: Keys.fitnessEloHistory) ?? [:]
     fitnessRatingSnapshot = load(FitnessRating.self, key: Keys.fitnessRatingSnapshot)
     didRequestHealthKitAuthorization = load(Bool.self, key: Keys.didRequestHealthKitAuthorization) ?? false
+    notifications = load([AppNotification].self, key: Keys.notifications) ?? []
+    didRequestNotificationAuthorization = load(Bool.self, key: Keys.didRequestNotificationAuthorization) ?? false
+    lastLeaderUserIDByActiveGameID = load([String: String].self, key: Keys.lastLeaderUserIDByActiveGameID) ?? [:]
+    lastMilestoneNotifiedPointsByKey = load([String: Int].self, key: Keys.lastMilestoneNotifiedPointsByKey) ?? [:]
   }
 
   func saveAll() {
@@ -119,6 +133,10 @@ final class AppStore {
     save(fitnessEloHistory, key: Keys.fitnessEloHistory)
     save(fitnessRatingSnapshot, key: Keys.fitnessRatingSnapshot)
     save(didRequestHealthKitAuthorization, key: Keys.didRequestHealthKitAuthorization)
+    save(notifications, key: Keys.notifications)
+    save(didRequestNotificationAuthorization, key: Keys.didRequestNotificationAuthorization)
+    save(lastLeaderUserIDByActiveGameID, key: Keys.lastLeaderUserIDByActiveGameID)
+    save(lastMilestoneNotifiedPointsByKey, key: Keys.lastMilestoneNotifiedPointsByKey)
   }
 
   func signOut() {
@@ -140,6 +158,40 @@ final class AppStore {
     fitnessEloHistory = [:]
     fitnessRatingSnapshot = nil
     didRequestHealthKitAuthorization = false
+    notifications = []
+    didRequestNotificationAuthorization = false
+    lastLeaderUserIDByActiveGameID = [:]
+    lastMilestoneNotifiedPointsByKey = [:]
+    saveAll()
+  }
+
+  // MARK: - Notifications
+
+  var unreadNotificationsCount: Int {
+    notifications.filter { !$0.isRead }.count
+  }
+
+  func addNotification(_ n: AppNotification) {
+    if notifications.contains(where: { $0.id == n.id }) { return }
+    notifications.insert(n, at: 0)
+    notifications.sort { $0.createdAt > $1.createdAt }
+    saveAll()
+  }
+
+  func markNotificationRead(_ id: String) {
+    guard let idx = notifications.firstIndex(where: { $0.id == id }) else { return }
+    notifications[idx].isRead = true
+    saveAll()
+  }
+
+  func markAllNotificationsRead() {
+    guard notifications.contains(where: { !$0.isRead }) else { return }
+    for i in notifications.indices { notifications[i].isRead = true }
+    saveAll()
+  }
+
+  func clearAllNotifications() {
+    notifications = []
     saveAll()
   }
 
