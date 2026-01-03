@@ -135,6 +135,7 @@ private struct GameMapTrack: View {
       let resolved = style
       let path = pathPolyline(in: rect, style: resolved)
       let trackPath = smoothedPath(from: path)
+      let leaderT = players.map(\.progress).max() ?? 0
 
       ZStack {
         background(for: resolved)
@@ -142,6 +143,10 @@ private struct GameMapTrack: View {
         Canvas { ctx, size in
           // Track
           drawTrack(in: &ctx, size: size, style: resolved, path: trackPath)
+          // Start line (distance = 0)
+          drawStartLine(in: &ctx, polyline: path, style: resolved)
+          // Future buffer (space beyond current leader)
+          drawFutureBuffer(in: &ctx, polyline: path, fromT: leaderT, style: resolved)
           // Checkpoints
           for cp in checkpoints {
             let p = pointOnPolyline(path, t: cp.progress)
@@ -169,8 +174,9 @@ private struct GameMapTrack: View {
         }
 
         // Player bubbles
+        let positions = layoutPlayerBubblePositions(polyline: path, players: players, width: rect.width, height: rect.height)
         ForEach(players) { pl in
-          let p = pointOnPolyline(path, t: pl.progress)
+          let p = positions[pl.id] ?? pointOnPolyline(path, t: pl.progress)
           PlayerBubble(name: pl.displayName, isMe: pl.isMe)
             .position(x: clamp(p.x, 22, rect.width - 22), y: clamp(p.y, 18, rect.height - 18))
         }
@@ -328,6 +334,59 @@ private struct GameMapTrack: View {
     }
     return pts
   }
+
+  private func drawStartLine(in ctx: inout GraphicsContext, polyline: [CGPoint], style: GameMapStyle) {
+    guard polyline.count >= 2 else { return }
+    let p0 = polyline[0]
+    let p1 = polyline[1]
+    let dx = p1.x - p0.x
+    let dy = p1.y - p0.y
+    let len = max(0.0001, hypot(dx, dy))
+    // Perpendicular direction to the track.
+    let nx = -dy / len
+    let ny = dx / len
+
+    let half: CGFloat = 68
+    let a = CGPoint(x: p0.x - nx * half, y: p0.y - ny * half)
+    let b = CGPoint(x: p0.x + nx * half, y: p0.y + ny * half)
+
+    var stripe = Path()
+    stripe.move(to: a)
+    stripe.addLine(to: b)
+
+    // Background gate
+    ctx.stroke(stripe, with: .color(DS.Palette.surface(scheme).opacity(0.95)), style: StrokeStyle(lineWidth: 10, lineCap: .round))
+    // Checker stripe effect
+    let accent = DS.Palette.accent.opacity(scheme == .dark ? 0.85 : 0.70)
+    ctx.stroke(stripe, with: .color(accent), style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [6, 6]))
+    // Title-ish banner dot
+    let dot = Path(ellipseIn: CGRect(x: p0.x - 6, y: p0.y - 6, width: 12, height: 12))
+    ctx.fill(dot, with: .color(DS.Palette.accent.opacity(0.85)))
+  }
+
+  private func drawFutureBuffer(in ctx: inout GraphicsContext, polyline: [CGPoint], fromT: Double, style: GameMapStyle) {
+    let t0 = min(0.995, max(0.0, fromT))
+    let t1 = 1.0
+    guard t1 > t0 + 0.001 else { return }
+
+    // Sample a short path segment above the leader and render it lighter.
+    let seg = sampledPolyline(polyline, t0: t0, t1: t1, samples: 18)
+    guard seg.count >= 2 else { return }
+    var p = Path()
+    p.move(to: seg[0])
+    for pt in seg.dropFirst() { p.addLine(to: pt) }
+
+    let color: Color
+    switch style {
+    case .road:
+      color = Color.white.opacity(scheme == .dark ? 0.18 : 0.22)
+    case .pool:
+      color = Color.white.opacity(scheme == .dark ? 0.16 : 0.20)
+    default:
+      color = DS.Palette.separator(scheme).opacity(scheme == .dark ? 0.18 : 0.22)
+    }
+    ctx.stroke(p, with: .color(color), style: StrokeStyle(lineWidth: 14, lineCap: .round, dash: [8, 10]))
+  }
 }
 
 private struct InteractiveGameMapTrack: View {
@@ -349,6 +408,7 @@ private struct InteractiveGameMapTrack: View {
       let contentRect = CGRect(x: 0, y: 0, width: visibleRect.width, height: max(1200, visibleRect.height * 2.6))
       let polyline = pathPolyline(in: contentRect, style: resolved)
       let trackPath = smoothedPath(from: polyline)
+      let leaderT = players.map(\.progress).max() ?? 0
 
       ZStack {
         background(for: resolved)
@@ -356,6 +416,8 @@ private struct InteractiveGameMapTrack: View {
         ZStack {
           Canvas { ctx, _ in
             drawTrack(in: &ctx, size: contentRect.size, style: resolved, path: trackPath)
+            drawStartLine(in: &ctx, polyline: polyline, style: resolved)
+            drawFutureBuffer(in: &ctx, polyline: polyline, fromT: leaderT, style: resolved)
             for cp in checkpoints {
               let p = pointOnPolyline(polyline, t: cp.progress)
               drawCheckpoint(in: &ctx, at: p, style: resolved)
@@ -375,8 +437,9 @@ private struct InteractiveGameMapTrack: View {
               .position(x: clamp(p.x + 42, 18, contentRect.width - 18), y: clamp(p.y - 18, 18, contentRect.height - 18))
           }
 
+          let positions = layoutPlayerBubblePositions(polyline: polyline, players: players, width: contentRect.width, height: contentRect.height)
           ForEach(players) { pl in
-            let p = pointOnPolyline(polyline, t: pl.progress)
+            let p = positions[pl.id] ?? pointOnPolyline(polyline, t: pl.progress)
             PlayerBubble(name: pl.displayName, isMe: pl.isMe)
               .position(x: clamp(p.x, 22, contentRect.width - 22), y: clamp(p.y, 18, contentRect.height - 18))
           }
@@ -432,6 +495,54 @@ private struct InteractiveGameMapTrack: View {
     let minOffset = min(0, visibleHeight - contentHeight)
     let maxOffset: CGFloat = 0
     return clamp(proposed, minOffset, maxOffset)
+  }
+
+  private func drawStartLine(in ctx: inout GraphicsContext, polyline: [CGPoint], style: GameMapStyle) {
+    // Mirror the small track renderer.
+    guard polyline.count >= 2 else { return }
+    let p0 = polyline[0]
+    let p1 = polyline[1]
+    let dx = p1.x - p0.x
+    let dy = p1.y - p0.y
+    let len = max(0.0001, hypot(dx, dy))
+    let nx = -dy / len
+    let ny = dx / len
+
+    let half: CGFloat = 76
+    let a = CGPoint(x: p0.x - nx * half, y: p0.y - ny * half)
+    let b = CGPoint(x: p0.x + nx * half, y: p0.y + ny * half)
+
+    var stripe = Path()
+    stripe.move(to: a)
+    stripe.addLine(to: b)
+
+    ctx.stroke(stripe, with: .color(DS.Palette.surface(scheme).opacity(0.95)), style: StrokeStyle(lineWidth: 12, lineCap: .round))
+    let accent = DS.Palette.accent.opacity(scheme == .dark ? 0.85 : 0.70)
+    ctx.stroke(stripe, with: .color(accent), style: StrokeStyle(lineWidth: 5, lineCap: .round, dash: [7, 6]))
+
+    _ = style
+  }
+
+  private func drawFutureBuffer(in ctx: inout GraphicsContext, polyline: [CGPoint], fromT: Double, style: GameMapStyle) {
+    let t0 = min(0.995, max(0.0, fromT))
+    let t1 = 1.0
+    guard t1 > t0 + 0.001 else { return }
+    let seg = sampledPolyline(polyline, t0: t0, t1: t1, samples: 22)
+    guard seg.count >= 2 else { return }
+    var p = Path()
+    p.move(to: seg[0])
+    for pt in seg.dropFirst() { p.addLine(to: pt) }
+
+    let color: Color
+    switch style {
+    case .road:
+      color = Color.white.opacity(scheme == .dark ? 0.16 : 0.20)
+    case .pool:
+      color = Color.white.opacity(scheme == .dark ? 0.14 : 0.18)
+    default:
+      color = DS.Palette.separator(scheme).opacity(scheme == .dark ? 0.16 : 0.20)
+    }
+    ctx.stroke(p, with: .color(color), style: StrokeStyle(lineWidth: 16, lineCap: .round, dash: [10, 12]))
   }
 }
 
@@ -623,5 +734,57 @@ private func pointOnPolyline(_ pts: [CGPoint], t: Double) -> CGPoint {
     dist -= len
   }
   return pts.last ?? .zero
+}
+
+private func sampledPolyline(_ pts: [CGPoint], t0: Double, t1: Double, samples: Int) -> [CGPoint] {
+  let n = max(2, samples)
+  var out: [CGPoint] = []
+  for i in 0..<n {
+    let u = Double(i) / Double(n - 1)
+    let t = t0 + (t1 - t0) * u
+    out.append(pointOnPolyline(pts, t: t))
+  }
+  return out
+}
+
+private func layoutPlayerBubblePositions(polyline: [CGPoint], players: [GameMapPlayer], width: CGFloat, height: CGFloat) -> [String: CGPoint] {
+  // Deterministic jitter + simple vertical spacing to improve readability.
+  let minYSpacing: CGFloat = 26
+  var items: [(id: String, base: CGPoint, y: CGFloat, x: CGFloat)] = players.map { pl in
+    var p = pointOnPolyline(polyline, t: pl.progress)
+    let h = stableHash64(pl.id)
+    let jx = CGFloat(Int(h % 5) - 2) * 6 // -12..12
+    let jy = CGFloat(Int((h / 7) % 5) - 2) * 4 // -8..8
+    p.x = clamp(p.x + jx, 22, width - 22)
+    p.y = clamp(p.y + jy, 18, height - 18)
+    return (pl.id, p, p.y, p.x)
+  }
+
+  items.sort { lhs, rhs in
+    if lhs.y != rhs.y { return lhs.y < rhs.y }
+    return lhs.id < rhs.id
+  }
+
+  var placed: [String: CGPoint] = [:]
+  var lastY: CGFloat? = nil
+  for it in items {
+    var y = it.y
+    if let lastY, y - lastY < minYSpacing {
+      y = lastY + minYSpacing
+    }
+    y = clamp(y, 18, height - 18)
+    placed[it.id] = CGPoint(x: it.x, y: y)
+    lastY = y
+  }
+  return placed
+}
+
+private func stableHash64(_ s: String) -> UInt64 {
+  var h: UInt64 = 1469598103934665603
+  for b in s.utf8 {
+    h ^= UInt64(b)
+    h &*= 1099511628211
+  }
+  return h
 }
 

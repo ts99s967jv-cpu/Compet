@@ -83,6 +83,18 @@ final class ActiveGamesService {
       var updated = game
       var safety = 0
 
+      // System season games (month/year) are calendar-derived and explicitly clamped.
+      if let endsAt = elim.endsAt,
+         let schedule = SeasonWaveService.scheduleForSystemGame(
+          winCondition: game.settings.winCondition,
+          seasonStart: game.createdAt,
+          seasonEnd: endsAt
+         )
+      {
+        tickSystemSeasonGame(updated: &updated, elim: &elim, now: now, schedule: schedule)
+        continue
+      }
+
       while safety < 24 {
         safety += 1
         guard let cutoff = nextCutoff(from: elim.roundStartedAt, cadence: elim.cadence) else { break }
@@ -144,6 +156,95 @@ final class ActiveGamesService {
         updated.elimination = elim
         store.updateActiveGame(updated)
       }
+    }
+  }
+
+  private func tickSystemSeasonGame(
+    updated: inout ActiveGame,
+    elim: inout EliminationState,
+    now: Date,
+    schedule: SeasonWaveService.Schedule
+  ) {
+    // Clamp the stored round to a valid wave index at all times.
+    let st = SeasonWaveService.status(now: now, schedule: schedule)
+    let maxWaveIndex = max(0, schedule.maxWaves - 1)
+    let computedWaveIndex = min(maxWaveIndex, max(0, st.currentWave.number - 1))
+
+    if elim.roundIndex > maxWaveIndex || elim.roundIndex < 0 {
+      elim.roundIndex = computedWaveIndex
+    }
+
+    // If we're out-of-sync on roundStartedAt, snap to the computed wave start.
+    let computedStart = st.currentWave.start
+    if elim.roundStartedAt > now || abs(elim.roundStartedAt.timeIntervalSince(computedStart)) > 2 {
+      elim.roundStartedAt = computedStart
+    }
+
+    var safety = 0
+    while safety < 20 {
+      safety += 1
+      // Current wave (1-based) implied by stored roundIndex
+      let currentWaveNumber = min(schedule.maxWaves, max(1, elim.roundIndex + 1))
+      guard let wave = schedule.waves.first(where: { $0.number == currentWaveNumber }) else { break }
+
+      // If we haven't reached the cutoff for the current wave, nothing to do.
+      guard now >= wave.end else {
+        updated.elimination = elim
+        store.updateActiveGame(updated)
+        return
+      }
+
+      // Apply elimination(s) at this wave boundary.
+      let remaining = updated.players.filter { !elim.eliminatedUserIDs.contains($0.id) }
+      if remaining.count <= 1 {
+        // If nobody joined yet, do not force-finish until season completion.
+        if now < schedule.seasonEnd {
+          updated.elimination = elim
+          store.updateActiveGame(updated)
+          return
+        }
+        updated.status = .finished
+        elim.winnerUserID = remaining.first?.id
+        updated.elimination = elim
+        store.updateActiveGame(updated)
+        return
+      }
+
+      // Final wave: game ends after this elimination boundary; do not advance beyond max waves.
+      let isFinalWave = currentWaveNumber >= schedule.maxWaves
+
+      let eliminationsThisRound = eliminationCountThisRound(
+        remainingCount: remaining.count,
+        afterCutoff: wave.end,
+        cadence: elim.cadence,
+        endsAt: schedule.seasonEnd
+      )
+      let rankedAsc = rankAscending(users: remaining, roundIndex: elim.roundIndex, seed: elim.roundStartedAt)
+      let toEliminate = rankedAsc.prefix(min(eliminationsThisRound, max(0, remaining.count - 1)))
+      for loser in toEliminate {
+        elim.eliminatedUserIDs.append(loser.id)
+      }
+
+      let remainingAfter = updated.players.filter { !elim.eliminatedUserIDs.contains($0.id) }
+
+      if remainingAfter.count == 1 || isFinalWave || now >= schedule.seasonEnd {
+        updated.status = .finished
+        elim.winnerUserID = remainingAfter.first?.id
+        // Keep roundIndex clamped to final wave index.
+        elim.roundIndex = maxWaveIndex
+        elim.roundStartedAt = schedule.waves.last?.start ?? elim.roundStartedAt
+        updated.elimination = elim
+        store.updateActiveGame(updated)
+        return
+      }
+
+      // Advance to next wave (explicitly clamped).
+      elim.roundIndex = min(maxWaveIndex, elim.roundIndex + 1)
+      if let next = schedule.waves.first(where: { $0.number == currentWaveNumber + 1 }) {
+        elim.roundStartedAt = next.start
+      }
+      updated.elimination = elim
+      store.updateActiveGame(updated)
     }
   }
 
@@ -212,7 +313,8 @@ final class ActiveGamesService {
       h ^= UInt64(b)
       h &*= 1099511628211
     }
-    return Int(h % 10_000)
+    // Provisional scores must not stick at 0 (unless the true value is 0).
+    return Int(h % 9_500) + 500
   }
 
   // MARK: - Helpers
@@ -309,7 +411,18 @@ final class ActiveGamesService {
     let activeID = "ag_" + publicGame.id
 
     let cadence = cadenceFor(publicGame.settings.winCondition)
-    let (roundStart, roundIndex) = currentRound(seasonStart: seasonStart, cadence: cadence, now: now)
+    let (roundStart, roundIndex): (Date, Int) = {
+      if let schedule = SeasonWaveService.scheduleForSystemGame(
+        winCondition: publicGame.settings.winCondition,
+        seasonStart: seasonStart,
+        seasonEnd: seasonEnd
+      ) {
+        let st = SeasonWaveService.status(now: now, schedule: schedule)
+        let idx = min(max(0, st.currentWave.number - 1), max(0, schedule.maxWaves - 1))
+        return (st.currentWave.start, idx)
+      }
+      return currentRound(seasonStart: seasonStart, cadence: cadence, now: now)
+    }()
 
     if var existing = store.activeGames.first(where: { $0.id == activeID }) {
       if existing.status == .finished { return }
@@ -323,13 +436,24 @@ final class ActiveGamesService {
         // This fixes cases where older persisted data had the wrong cadence/roundIndex (e.g. huge "round 4052").
         let roundIndexDelta = abs(elim.roundIndex - roundIndex)
         let timeSkew = abs(elim.roundStartedAt.timeIntervalSince(roundStart))
+        let maxWaveIndex: Int = {
+          if let schedule = SeasonWaveService.scheduleForSystemGame(
+            winCondition: publicGame.settings.winCondition,
+            seasonStart: seasonStart,
+            seasonEnd: seasonEnd
+          ) { return max(0, schedule.maxWaves - 1) }
+          return Int.max
+        }()
+        if elim.roundIndex > maxWaveIndex {
+          elim.roundIndex = maxWaveIndex
+        }
         if elim.roundStartedAt > now || elim.roundStartedAt < seasonStart.addingTimeInterval(-24 * 60 * 60) || roundIndexDelta > 2 || timeSkew > 2 {
           elim.roundStartedAt = roundStart
           elim.roundIndex = roundIndex
         } else if roundStart > elim.roundStartedAt {
           // Normal forward-only update.
           elim.roundStartedAt = roundStart
-          elim.roundIndex = max(elim.roundIndex, roundIndex)
+          elim.roundIndex = min(maxWaveIndex, max(elim.roundIndex, roundIndex))
         }
         existing.elimination = elim
       } else {
@@ -380,6 +504,7 @@ final class ActiveGamesService {
   }
 
   private func currentRound(seasonStart: Date, cadence: EliminationCadence, now: Date) -> (Date, Int) {
+    // Generic (non-system) fallback only.
     let cal = Calendar.current
     switch cadence {
     case .daily:
