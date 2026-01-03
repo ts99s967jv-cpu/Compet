@@ -397,7 +397,7 @@ struct ActiveGameDetailSheet: View {
         players: rowsDesc.map { (u, s) in
           let raw = Double(max(0, s)) / Double(visibleMaxDistance)
           let minProgress = min(0.04, 120.0 / Double(max(1, visibleMaxDistance)))
-          GameMapPlayer(
+          return GameMapPlayer(
             id: u.id,
             displayName: u.displayName,
             progress: min(0.995, max(minProgress, raw)),
