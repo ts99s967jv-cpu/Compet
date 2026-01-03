@@ -13,6 +13,7 @@ struct ActiveGameCard: View {
   var body: some View {
     Button(action: tapped) {
       VStack(alignment: .leading, spacing: DS.Spacing.s) {
+        let now = Date()
         HStack {
           Text(game.title)
             .font(DS.Typography.section)
@@ -415,11 +416,13 @@ struct ActiveGameDetailSheet: View {
            ) {
           let st = SeasonWaveService.status(now: now, schedule: schedule)
           Text("Wave \(st.currentWave.number)/\(schedule.maxWaves) • \(wave.label) \(waveDisplayDate(wave.date, for: game).formatted(date: .abbreviated, time: .omitted))")
+            .font(DS.Typography.caption.weight(.semibold))
+            .foregroundStyle(DS.Palette.subtext(scheme))
         } else {
           Text("Round \(elim.roundIndex + 1) • \(wave.label) \(waveDisplayDate(wave.date, for: game).formatted(date: .abbreviated, time: .omitted))")
+            .font(DS.Typography.caption.weight(.semibold))
+            .foregroundStyle(DS.Palette.subtext(scheme))
         }
-          .font(DS.Typography.caption.weight(.semibold))
-          .foregroundStyle(DS.Palette.subtext(scheme))
         if projected > 0 {
           Text("Elimination zone: bottom \(projected) player\(projected == 1 ? "" : "s")")
             .font(DS.Typography.caption)
@@ -557,7 +560,7 @@ struct ActiveGameDetailSheet: View {
         players: rowsDesc.map { (u, s) in
           let raw = Double(max(0, s)) / Double(visibleMaxDistance)
           let minProgress = min(0.04, 120.0 / Double(max(1, visibleMaxDistance)))
-          GameMapPlayer(
+          return GameMapPlayer(
             id: u.id,
             displayName: u.displayName,
             progress: min(0.995, max(minProgress, raw)),

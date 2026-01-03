@@ -656,8 +656,6 @@ private struct PublicGameDetailSheet: View {
                     .foregroundStyle(DS.Palette.subtext(scheme))
                     .monospacedDigit()
                 }
-                  .font(DS.Typography.caption)
-                  .foregroundStyle(DS.Palette.subtext(scheme))
 
                 let projected = svc.projectedEliminationsThisRound(game: active)
                 Text("Elimination zone: bottom \(projected) player\(projected == 1 ? "" : "s")")
