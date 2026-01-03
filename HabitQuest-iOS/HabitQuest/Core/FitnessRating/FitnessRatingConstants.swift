@@ -4,6 +4,7 @@ enum FitnessRatingConstants {
   static let confidenceMin: Double = 0.15
   static let sigmaExpectedFPS: Double = 400.0
   static let baseK: Double = 50.0
+  static let minEloUpdateIntervalSeconds: TimeInterval = 6 * 60 * 60
 
   static let metricWindowDays: Int = 42
   static let fullConfidenceTargetDays: Int = 42

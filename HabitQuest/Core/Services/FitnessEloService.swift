@@ -44,6 +44,18 @@ final class FitnessEloService {
       inputs: .init(age: profile.age, currentElo: currentElo, metrics: summaries, now: now)
     )
 
+    // Prevent repeated Elo updates from identical inputs (button-mashing).
+    // We still update internal snapshot (FPS/confidence) for transparency/debug.
+    if let ts = profile.fitnessEloUpdatedAt,
+       now.timeIntervalSince(ts) < FitnessRatingConstants.minEloUpdateIntervalSeconds
+    {
+      var snapshot = outputs.rating
+      snapshot.elo = currentElo
+      store.fitnessRatingSnapshot = snapshot
+      store.saveAll()
+      return profile.fitnessElo
+    }
+
     // Apply optional migration confidence floor until natural confidence surpasses it.
     var rating = outputs.rating
     if let floor = store.fitnessEloConfidenceOverride {

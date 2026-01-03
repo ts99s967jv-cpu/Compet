@@ -35,6 +35,16 @@ final class FitnessEloService {
       inputs: .init(age: profile.age, currentElo: currentElo, metrics: summaries, now: now)
     )
 
+    if let ts = profile.fitnessEloUpdatedAt,
+       now.timeIntervalSince(ts) < FitnessRatingConstants.minEloUpdateIntervalSeconds
+    {
+      var snapshot = outputs.rating
+      snapshot.elo = currentElo
+      store.fitnessRatingSnapshot = snapshot
+      store.saveAll()
+      return profile.fitnessElo
+    }
+
     var rating = outputs.rating
     if let floor = store.fitnessEloConfidenceOverride {
       if rating.confidence < floor {

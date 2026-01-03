@@ -632,6 +632,9 @@ struct ActiveGameDetailSheet: View {
   private func stepSizeForCheckpoints(maxScore: Int, activity: GameActivity) -> Int {
     switch activity {
     case .steps:
+      // Handle very small max scores to avoid repeated labels like 50/50/50.
+      if maxScore < 80 { return 10 }
+      if maxScore < 200 { return 25 }
       if maxScore < 400 { return 50 }
       if maxScore < 1200 { return 100 }
       if maxScore < 4000 { return 250 }

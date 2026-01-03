@@ -89,13 +89,14 @@ final class PublicGamesService {
     }
     store.updatePublicGame(game)
 
-    if backend.isAvailable, game.visibility != .systemEvent {
+    // Persist join for all games (including system events) so membership survives relaunch.
+    if backend.isAvailable {
       Task {
         do {
           try await backend.joinPublicGame(gameID: gameID)
           let games = try await backend.listPublicGames()
           await MainActor.run {
-            store.publicGames = games
+            store.publicGames = games.filter { !store.hiddenPublicGameIDs.contains($0.id) }
             store.saveAll()
           }
         } catch {}
@@ -133,7 +134,8 @@ final class PublicGamesService {
     // Leaving should remove the lobby from your UI.
     store.hidePublicGame(gameID: game.id)
 
-    if backend.isAvailable, game.visibility != .systemEvent {
+    // Persist leave for all games (including system events) so membership survives relaunch.
+    if backend.isAvailable {
       Task {
         do {
           try await backend.leavePublicGame(gameID: gameID)

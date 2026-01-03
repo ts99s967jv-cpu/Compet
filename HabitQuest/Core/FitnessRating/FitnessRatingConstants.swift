@@ -5,6 +5,9 @@ enum FitnessRatingConstants {
   static let confidenceMin: Double = 0.15
   static let sigmaExpectedFPS: Double = 400.0
   static let baseK: Double = 50.0 // spec: 40–60
+  /// Prevents Elo "button mashing" from repeatedly applying the same delta.
+  /// Elo should adapt gradually as new data accrues.
+  static let minEloUpdateIntervalSeconds: TimeInterval = 6 * 60 * 60
 
   // Window used for metric availability confidence.
   // Spec provides formula but not window size; we centralize it here.
