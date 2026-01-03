@@ -41,7 +41,9 @@ final class GameScoreSyncService {
         metrics: game.settings.scoringMetrics,
         start: start,
         end: end,
-        sourceFilter: game.settings.phoneOnlyMetrics ? .iPhoneOnly : .any
+        // Points are raw units (1 step = 1 point, 1 kcal = 1 point).
+        // Always include all HealthKit sources (Watch + iPhone), regardless of "phoneOnlyMetrics".
+        sourceFilter: .any
       )
       let score = GameScore(
         activeGameID: game.id,

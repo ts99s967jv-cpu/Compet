@@ -7,6 +7,7 @@ struct ProfileHabitsSection: View {
   @State private var showAdd: Bool = false
   @State private var logHabit: Habit?
   @State private var editHabit: Habit?
+  @State private var showArchived: Bool = false
 
   private let columns = [
     GridItem(.flexible(), spacing: DS.Spacing.m),
@@ -38,47 +39,79 @@ struct ProfileHabitsSection: View {
         .accessibilityLabel("Add habit")
       }
 
+      LazyVGrid(columns: columns, spacing: DS.Spacing.m) {
+        ForEach(store.activeHabits) { habit in
+          HabitGridCard(store: store, habit: habit)
+            .onTapGesture {
+              withAnimation(.easeInOut(duration: 0.25)) {
+                switch habit.goal {
+                case .streak:
+                  store.toggleCheckInToday(habitID: habit.id)
+                case .target(let metric, _, _, _):
+                  // Steps are auto-tracked from HealthKit (no manual logging).
+                  if metric == .steps { return }
+                  logHabit = habit
+                }
+              }
+            }
+            .contextMenu {
+              Button {
+                editHabit = habit
+              } label: {
+                Label("Edit", systemImage: "slider.horizontal.3")
+              }
+
+              if habit.behavior == .breakHabit {
+                Button(role: .destructive) {
+                  store.markSlipToday(habitID: habit.id)
+                } label: {
+                  Label("Mark slip today", systemImage: "xmark.circle")
+                }
+              }
+
+              Button {
+                store.setHabitActive(habit.id, isActive: false)
+              } label: {
+                Label("Archive", systemImage: "archivebox")
+              }
+            }
+        }
+      }
+
       if store.activeHabits.isEmpty {
         Text("Add habits to build streaks and track goals.")
           .font(DS.Typography.body)
           .foregroundStyle(DS.Palette.subtext(scheme))
-      } else {
-        LazyVGrid(columns: columns, spacing: DS.Spacing.m) {
-          ForEach(store.activeHabits) { habit in
-            HabitGridCard(store: store, habit: habit)
-              .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                  switch habit.goal {
-                  case .streak:
-                    store.toggleCheckInToday(habitID: habit.id)
-                  case .target(let metric, _, _, _):
-                    // Steps are auto-tracked from HealthKit (no manual logging).
-                    if metric == .steps { return }
-                    logHabit = habit
-                  }
-                }
-              }
-              .contextMenu {
-                Button {
-                  editHabit = habit
-                } label: {
-                  Label("Edit", systemImage: "slider.horizontal.3")
-                }
+      }
 
-                if habit.behavior == .breakHabit {
-                  Button(role: .destructive) {
-                    store.markSlipToday(habitID: habit.id)
+      if !store.archivedHabits.isEmpty {
+        Button {
+          withAnimation(.easeInOut(duration: 0.2)) { showArchived.toggle() }
+        } label: {
+          HStack {
+            Text("Archived")
+              .font(DS.Typography.section)
+              .foregroundStyle(DS.Palette.text(scheme))
+            Spacer()
+            Image(systemName: showArchived ? "chevron.up" : "chevron.down")
+              .foregroundStyle(DS.Palette.subtext(scheme))
+          }
+        }
+        .buttonStyle(.plain)
+
+        if showArchived {
+          LazyVGrid(columns: columns, spacing: DS.Spacing.m) {
+            ForEach(store.archivedHabits) { habit in
+              HabitGridCard(store: store, habit: habit)
+                .opacity(0.65)
+                .contextMenu {
+                  Button {
+                    store.setHabitActive(habit.id, isActive: true)
                   } label: {
-                    Label("Mark slip today", systemImage: "xmark.circle")
+                    Label("Unarchive", systemImage: "arrow.uturn.backward")
                   }
                 }
-
-                Button {
-                  store.setHabitActive(habit.id, isActive: false)
-                } label: {
-                  Label("Archive", systemImage: "archivebox")
-                }
-              }
+            }
           }
         }
       }
