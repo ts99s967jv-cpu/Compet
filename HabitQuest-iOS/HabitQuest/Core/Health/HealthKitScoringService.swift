@@ -69,12 +69,12 @@ final class HealthKitScoringService {
 
   private func steps(start: Date, end: Date, sourceFilter: SourceFilter) async throws -> Double {
     guard let type = HKObjectType.quantityType(forIdentifier: .stepCount) else { throw Error.missingType }
-    return try await sumQuantitySamples(type: type, unit: .count(), start: start, end: end, sourceFilter: sourceFilter)
+    return try await sumQuantity(type: type, unit: .count(), start: start, end: end, sourceFilter: sourceFilter)
   }
 
   private func activeEnergyKcal(start: Date, end: Date, sourceFilter: SourceFilter) async throws -> Double {
     guard let type = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else { throw Error.missingType }
-    return try await sumQuantitySamples(type: type, unit: .kilocalorie(), start: start, end: end, sourceFilter: sourceFilter)
+    return try await sumQuantity(type: type, unit: .kilocalorie(), start: start, end: end, sourceFilter: sourceFilter)
   }
 
   /// “Sleep score” is computed from sleep duration as: score = min(100, (hours / 8) * 100)
@@ -83,6 +83,29 @@ final class HealthKitScoringService {
     let seconds = try await sleepSeconds(type: type, start: start, end: end)
     let hours = seconds / 3600.0
     return min(100, (hours / 8.0) * 100.0)
+  }
+
+  private func sumQuantity(type: HKQuantityType, unit: HKUnit, start: Date, end: Date, sourceFilter: SourceFilter) async throws -> Double {
+    // Important: summing raw quantity samples can over-count if sources write overlapping samples.
+    // For "any source" games, use HealthKit's cumulativeSum aggregation.
+    // For phone-only games, we need per-sample filtering by HKDevice, so we fall back to a sample query.
+    if sourceFilter == .any {
+      return try await sumQuantityStatistics(type: type, unit: unit, start: start, end: end)
+    }
+    return try await sumQuantitySamples(type: type, unit: unit, start: start, end: end, sourceFilter: sourceFilter)
+  }
+
+  private func sumQuantityStatistics(type: HKQuantityType, unit: HKUnit, start: Date, end: Date) async throws -> Double {
+    let pred = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+    let hkStore = store
+    return try await withCheckedThrowingContinuation { cont in
+      let q = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: pred, options: .cumulativeSum) { _, stats, error in
+        if let error { cont.resume(throwing: error); return }
+        let v = stats?.sumQuantity()?.doubleValue(for: unit) ?? 0
+        cont.resume(returning: v)
+      }
+      hkStore.execute(q)
+    }
   }
 
   private func sumQuantitySamples(type: HKQuantityType, unit: HKUnit, start: Date, end: Date, sourceFilter: SourceFilter) async throws -> Double {

@@ -24,6 +24,16 @@ struct RootView: View {
     .task(id: store.account?.userID) {
       guard store.isSignedIn else { return }
       await BackendSyncService(store: store).syncAll()
+      // Request HealthKit permissions up-front once (avoids tab-by-tab prompts).
+      if !store.didRequestHealthKitAuthorization {
+        do {
+          try await HealthKitAuthorizationService().requestAllAuthorization()
+          store.didRequestHealthKitAuthorization = true
+          store.saveAll()
+        } catch {
+          // Don't block app usage; user may deny permissions.
+        }
+      }
     }
   }
 }

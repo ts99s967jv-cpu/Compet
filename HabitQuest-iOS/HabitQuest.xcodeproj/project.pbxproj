@@ -27,6 +27,7 @@
 		CDA45DBCFD4E473DA688DE1A /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38981893672D4D1196063B4B /* DesignSystem.swift */; };
 		707C338AAE6F4C53897A03F5 /* HealthKitFitnessEloService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 162A23B1E94642CDA4C16411 /* HealthKitFitnessEloService.swift */; };
 		E0FCB43B1C9244299EDBA2B1 /* HealthKitScoringService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E60E11D10B34339825DCCD9 /* HealthKitScoringService.swift */; };
+		D0A1B2C3D4E5F60718293A61 /* HealthKitAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A1B2C3D4E5F60718293A61 /* HealthKitAuthorizationService.swift */; };
 		47977D2BA6234448B378C424 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70E8BBCB1FE47289FB41E23 /* Account.swift */; };
 		AD97C89F4DF5497897B323E9 /* ActiveGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A88D3A55CF445C9017D483 /* ActiveGame.swift */; };
 		EEC37A5C9E984C50A9875364 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55CE5A03AF5D4A7BA7C9E059 /* AppTheme.swift */; };
@@ -114,6 +115,7 @@
 		38981893672D4D1196063B4B /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/App/UI/DesignSystem.swift"; sourceTree = "<group>"; };
 		162A23B1E94642CDA4C16411 /* HealthKitFitnessEloService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Health/HealthKitFitnessEloService.swift"; sourceTree = "<group>"; };
 		6E60E11D10B34339825DCCD9 /* HealthKitScoringService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Health/HealthKitScoringService.swift"; sourceTree = "<group>"; };
+		C0A1B2C3D4E5F60718293A61 /* HealthKitAuthorizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Health/HealthKitAuthorizationService.swift"; sourceTree = "<group>"; };
 		D70E8BBCB1FE47289FB41E23 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/Account.swift"; sourceTree = "<group>"; };
 		B7A88D3A55CF445C9017D483 /* ActiveGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/ActiveGame.swift"; sourceTree = "<group>"; };
 		55CE5A03AF5D4A7BA7C9E059 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HabitQuest/Core/Models/AppTheme.swift"; sourceTree = "<group>"; };
@@ -378,6 +380,7 @@
 				491C6FF24C447A27754E9B1D /* SectionHeaderRow.swift in Sources */,
 				707C338AAE6F4C53897A03F5 /* HealthKitFitnessEloService.swift in Sources */,
 				E0FCB43B1C9244299EDBA2B1 /* HealthKitScoringService.swift in Sources */,
+				D0A1B2C3D4E5F60718293A61 /* HealthKitAuthorizationService.swift in Sources */,
 				C5D89169399364EBCCED8590 /* HealthKitStepSeriesService.swift in Sources */,
 				C8A1E5734A064BF93D4EFE7E /* HealthKitTrendsService.swift in Sources */,
 				4A3D744AC5F884BB6FB930C5 /* Backend.swift in Sources */,
@@ -439,8 +442,8 @@
 /* Begin XCBuildConfiguration section */
 		7281449BE14845FC9BEF2275 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ANALYZER_NONNULL = YES; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES; DEBUG_INFORMATION_FORMAT = dwarf; GCC_C_LANGUAGE_STANDARD = gnu17; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 5.0;}; name = Debug; };
 		D85E831EBB6F477DA93340B8 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ANALYZER_NONNULL = YES; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES; DEBUG_INFORMATION_FORMAT = dwarf-with-dsym; GCC_C_LANGUAGE_STANDARD = gnu17; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 5.0;}; name = Release; };
-		8F3A180DE25E432E80273657 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = HabitQuest/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.HabitQuest; PRODUCT_NAME = HabitQuest; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphonesimulator iphoneos"; SUPPORTS_MACCATALYST = NO; SWIFT_OPTIMIZATION_LEVEL = -Onone; TARGETED_DEVICE_FAMILY = "1";}; name = Debug; };
-		0321B6C0066D4842920EAED6 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = HabitQuest/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.HabitQuest; PRODUCT_NAME = HabitQuest; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphonesimulator iphoneos"; SUPPORTS_MACCATALYST = NO; SWIFT_OPTIMIZATION_LEVEL = -O; TARGETED_DEVICE_FAMILY = "1";}; name = Release; };
+		8F3A180DE25E432E80273657 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = HabitQuest/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.joshua.habitquest; PRODUCT_NAME = HabitQuest; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphonesimulator iphoneos"; SUPPORTS_MACCATALYST = NO; SWIFT_OPTIMIZATION_LEVEL = -Onone; TARGETED_DEVICE_FAMILY = "1";}; name = Debug; };
+		0321B6C0066D4842920EAED6 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = HabitQuest/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.joshua.habitquest; PRODUCT_NAME = HabitQuest; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphonesimulator iphoneos"; SUPPORTS_MACCATALYST = NO; SWIFT_OPTIMIZATION_LEVEL = -O; TARGETED_DEVICE_FAMILY = "1";}; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */

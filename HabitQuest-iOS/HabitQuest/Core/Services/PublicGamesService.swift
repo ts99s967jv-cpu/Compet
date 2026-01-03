@@ -171,7 +171,11 @@ final class PublicGamesService {
 
     // For system events, also remove from the active season game (prototype).
     if game.visibility == .systemEvent {
-      ActiveGamesService(store: store).removePlayerFromActiveGame(activeGameID: "ag_" + game.id, userID: me.id)
+      let activeID = "ag_" + game.id
+      ActiveGamesService(store: store).removePlayerFromActiveGame(activeGameID: activeID, userID: me.id)
+      // Also clear any locally cached leaderboard rows for this event so your score doesn't linger after leaving.
+      store.gameScores.removeAll { $0.activeGameID == activeID && $0.userID == me.id }
+      store.saveAll()
     }
   }
 

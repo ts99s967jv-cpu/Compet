@@ -308,16 +308,23 @@ final class SupabaseBackendClient: BackendClient {
 
     // 2) Games I'm in (covers private + my created games even if private)
     var myRows: [GameRow] = []
+    var myMembershipPlayerRows: [PlayerRow] = []
     if let me {
-      struct MembershipRow: Codable { var game_id: UUID }
+      struct MembershipRow: Codable {
+        var game_id: UUID
+        var user_id: UUID
+        var joined_at: Date
+      }
       let memberships: [MembershipRow] = (try? await client
         .from("public_game_players")
-        .select("game_id")
+        .select("game_id,user_id,joined_at")
         .eq("user_id", value: me.uuidString)
         .execute()
         .value) ?? []
 
       let myIDs = Set(memberships.map { $0.game_id.uuidString })
+      // Ensure we always model "my membership" locally, even if RLS blocks fetching all players.
+      myMembershipPlayerRows = memberships.map { PlayerRow(game_id: $0.game_id, user_id: $0.user_id, joined_at: $0.joined_at) }
       let myOr = ([ "created_by.eq.\(me.uuidString)" ] + myIDs.map { "id.eq.\($0)" }).joined(separator: ",")
       myRows = (try? await client
         .from("public_games")
@@ -345,6 +352,15 @@ final class SupabaseBackendClient: BackendClient {
         .or(cond)
         .execute()
         .value) ?? []
+    }
+    if !myMembershipPlayerRows.isEmpty {
+      let existing = Set(playerRows.map { "\($0.game_id.uuidString)|\($0.user_id.uuidString)" })
+      for pr in myMembershipPlayerRows {
+        let key = "\(pr.game_id.uuidString)|\(pr.user_id.uuidString)"
+        if !existing.contains(key) {
+          playerRows.append(pr)
+        }
+      }
     }
 
     // Fetch profiles for creators + players (no joins required)

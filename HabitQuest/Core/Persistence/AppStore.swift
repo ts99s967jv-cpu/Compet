@@ -24,6 +24,7 @@ final class AppStore {
     static let fitnessEloV2ConfidenceOverride = "habitquest.fitnessEloV2ConfidenceOverride"
     static let fitnessEloHistory = "habitquest.fitnessEloHistory"
     static let fitnessRatingSnapshot = "habitquest.fitnessRatingSnapshot"
+    static let didRequestHealthKitAuthorization = "habitquest.didRequestHealthKitAuthorization"
   }
 
   private let encoder = JSONEncoder()
@@ -57,6 +58,8 @@ final class AppStore {
   var fitnessEloHistory: [String: Int] = [:]
   /// v2 Fitness Elo: last computed internal snapshot (not shown to users).
   var fitnessRatingSnapshot: FitnessRating?
+  /// One-time guard so we request HealthKit permissions up-front only once.
+  var didRequestHealthKitAuthorization: Bool = false
 
   /// Ephemeral (not persisted) HealthKit-derived progress, keyed by habitID -> dayKey -> value.
   /// Used for auto-tracked habits like Steps so users don’t manually input Health data.
@@ -92,6 +95,7 @@ final class AppStore {
     fitnessEloConfidenceOverride = load(Double.self, key: Keys.fitnessEloV2ConfidenceOverride)
     fitnessEloHistory = load([String: Int].self, key: Keys.fitnessEloHistory) ?? [:]
     fitnessRatingSnapshot = load(FitnessRating.self, key: Keys.fitnessRatingSnapshot)
+    didRequestHealthKitAuthorization = load(Bool.self, key: Keys.didRequestHealthKitAuthorization) ?? false
   }
 
   func saveAll() {
@@ -114,6 +118,7 @@ final class AppStore {
     save(fitnessEloConfidenceOverride, key: Keys.fitnessEloV2ConfidenceOverride)
     save(fitnessEloHistory, key: Keys.fitnessEloHistory)
     save(fitnessRatingSnapshot, key: Keys.fitnessRatingSnapshot)
+    save(didRequestHealthKitAuthorization, key: Keys.didRequestHealthKitAuthorization)
   }
 
   func signOut() {
@@ -134,6 +139,7 @@ final class AppStore {
     fitnessEloConfidenceOverride = nil
     fitnessEloHistory = [:]
     fitnessRatingSnapshot = nil
+    didRequestHealthKitAuthorization = false
     saveAll()
   }
 
@@ -540,6 +546,10 @@ final class AppStore {
 
   var activeHabits: [Habit] {
     habits.filter { $0.isActive }
+  }
+
+  var archivedHabits: [Habit] {
+    habits.filter { !$0.isActive }
   }
 
   func todayProgressFraction(calendar: Calendar = .current, now: Date = Date()) -> Double {
