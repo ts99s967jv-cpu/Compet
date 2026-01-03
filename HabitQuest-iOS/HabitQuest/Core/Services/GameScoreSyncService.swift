@@ -122,8 +122,8 @@ final class GameScoreSyncService {
       kind: .gameLeadChange,
       headline: headline,
       body: body,
-      relatedActiveGameID: game.id,
-      relatedUserID: newLeader
+      relatedUserID: newLeader,
+      relatedActiveGameID: game.id
     ))
     LocalNotificationService.shared.postIfAllowed(title: "Lead change", body: "\(game.title): \(body)")
   }
