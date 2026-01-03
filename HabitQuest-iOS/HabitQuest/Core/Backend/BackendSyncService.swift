@@ -38,9 +38,40 @@ final class BackendSyncService {
       let publicGames = try await backend.listPublicGames()
       // Apply client-side hide list (leaving a lobby removes it from your UI).
       store.publicGames = publicGames.filter { !store.hiddenPublicGameIDs.contains($0.id) }
+      // Promote any started games I'm in into ActiveGames so they actually "run".
+      await promoteStartedPublicGamesToActiveGames(now: Date())
       store.saveAll()
     } catch {
       // Keep local state if backend fails (offline / misconfigured).
+    }
+  }
+
+  private func promoteStartedPublicGamesToActiveGames(now: Date) async {
+    guard let meID = store.profile?.id else { return }
+    let svc = ActiveGamesService(store: store)
+    let sync = GameScoreSyncService(store: store)
+
+    let candidates = store.publicGames.filter { $0.status == .started && $0.contains(userID: meID) }
+    for g in candidates {
+      let activeID = "ag_" + g.id
+      if store.activeGames.contains(where: { $0.id == activeID }) {
+        // Ensure players are up to date.
+        svc.addPlayerToActiveGame(activeGameID: activeID, user: store.profile!.asPublicUser())
+        continue
+      }
+
+      switch g.settings.winCondition {
+      case .eliminationLastManStanding, .kingOfMonth, .kingOfYear:
+        svc.startEliminationStyleGame(from: g, now: now)
+      case .levelVsLevelGoal:
+        svc.startLevelVsLevelGame(from: g, now: now)
+      case .mostPointsAtEnd:
+        svc.startMostPointsGame(from: g, now: now)
+      }
+
+      if let active = store.activeGames.first(where: { $0.id == activeID }) {
+        await sync.syncMyScore(for: active, now: now)
+      }
     }
   }
 }

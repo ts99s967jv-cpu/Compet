@@ -97,6 +97,22 @@ final class PublicGamesService {
           let games = try await backend.listPublicGames()
           await MainActor.run {
             store.publicGames = games.filter { !store.hiddenPublicGameIDs.contains($0.id) }
+            // If the game is already started, ensure it becomes a running ActiveGame immediately.
+            if let updated = store.publicGames.first(where: { $0.id == gameID }),
+               updated.status == .started,
+               let meID = store.profile?.id,
+               updated.contains(userID: meID)
+            {
+              let ag = ActiveGamesService(store: store)
+              switch updated.settings.winCondition {
+              case .eliminationLastManStanding, .kingOfMonth, .kingOfYear:
+                ag.startEliminationStyleGame(from: updated)
+              case .levelVsLevelGoal:
+                ag.startLevelVsLevelGame(from: updated)
+              case .mostPointsAtEnd:
+                ag.startMostPointsGame(from: updated)
+              }
+            }
             store.saveAll()
           }
         } catch {}
@@ -212,6 +228,22 @@ final class PublicGamesService {
           let games = try await backend.listPublicGames()
           await MainActor.run {
             store.publicGames = games
+            // Ensure the started game becomes a running ActiveGame immediately.
+            if let updated = store.publicGames.first(where: { $0.id == gameID }),
+               updated.status == .started,
+               let meID = store.profile?.id,
+               updated.contains(userID: meID)
+            {
+              let ag = ActiveGamesService(store: store)
+              switch updated.settings.winCondition {
+              case .eliminationLastManStanding, .kingOfMonth, .kingOfYear:
+                ag.startEliminationStyleGame(from: updated)
+              case .levelVsLevelGoal:
+                ag.startLevelVsLevelGame(from: updated)
+              case .mostPointsAtEnd:
+                ag.startMostPointsGame(from: updated)
+              }
+            }
             store.saveAll()
           }
         } catch {}
