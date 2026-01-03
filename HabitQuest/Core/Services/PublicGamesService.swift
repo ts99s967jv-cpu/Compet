@@ -40,17 +40,7 @@ final class PublicGamesService {
     store.addPublicGame(game)
   }
 
-  func leave(gameID: String) {
-    store.hidePublicGame(gameID: gameID)
-  }
-
-  func close(gameID: String) {
-    store.hidePublicGame(gameID: gameID)
-  }
-
-  func delete(gameID: String) {
-    store.hidePublicGame(gameID: gameID)
-  }
+  // No backend in this target; all actions are local-only.
 
   func join(gameID: String) {
     guard let profile = store.profile else { return }
@@ -89,6 +79,8 @@ final class PublicGamesService {
         ActiveGamesService(store: store).startEliminationStyleGame(from: game)
       } else if game.settings.winCondition == .levelVsLevelGoal {
         ActiveGamesService(store: store).startLevelVsLevelGame(from: game)
+      } else if game.settings.winCondition == .mostPointsAtEnd {
+        ActiveGamesService(store: store).startMostPointsGame(from: game)
       }
     }
   }
@@ -111,7 +103,13 @@ final class PublicGamesService {
     if game.visibility == .systemEvent {
       ActiveGamesService(store: store).removePlayerFromActiveGame(activeGameID: "ag_" + game.id, userID: me.id)
     }
+
+    // Leaving should remove the lobby from your UI.
+    store.hidePublicGame(gameID: gameID)
   }
+
+  func close(gameID: String) { store.hidePublicGame(gameID: gameID) }
+  func delete(gameID: String) { store.hidePublicGame(gameID: gameID) }
 
   /// Allows the lobby owner to start early (useful if the lobby isn't filling).
   func startNow(gameID: String) {
@@ -129,6 +127,8 @@ final class PublicGamesService {
       ActiveGamesService(store: store).startEliminationStyleGame(from: game)
     } else if game.settings.winCondition == .levelVsLevelGoal {
       ActiveGamesService(store: store).startLevelVsLevelGame(from: game)
+    } else if game.settings.winCondition == .mostPointsAtEnd {
+      ActiveGamesService(store: store).startMostPointsGame(from: game)
     }
   }
 

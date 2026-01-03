@@ -68,6 +68,23 @@ final class ActiveGamesService {
     store.addActiveGame(game)
   }
 
+  func startMostPointsGame(from publicGame: PublicGame, now: Date = Date()) {
+    guard publicGame.settings.winCondition == .mostPointsAtEnd else { return }
+    guard publicGame.players.count >= 2 else { return }
+    let players = publicGame.players.map { $0.user }
+    let game = ActiveGame(
+      id: "ag_" + publicGame.id,
+      title: publicGame.title,
+      createdAt: now,
+      settings: publicGame.settings,
+      status: .active,
+      players: players,
+      elimination: nil,
+      levelVsLevel: nil
+    )
+    store.addActiveGame(game)
+  }
+
   /// Advances elimination-style games that have passed the cadence cutoff.
   /// Local prototype: the eliminated player is chosen by lowest deterministic "round points".
   func tick(now: Date = Date()) {

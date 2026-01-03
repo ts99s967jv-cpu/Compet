@@ -627,8 +627,35 @@ private struct PublicGameDetailSheet: View {
                   .font(DS.Typography.section)
 
                 let svc = ActiveGamesService(store: store)
-                let cutoff = svc.nextEliminationDate(for: elim) ?? .now
-                Text("Next round: \(cutoff.formatted(date: .abbreviated, time: .shortened))")
+                let cutoff: Date = {
+                  if let endsAt = elim.endsAt,
+                     let schedule = SeasonWaveService.scheduleForSystemGame(
+                      winCondition: active.settings.winCondition,
+                      seasonStart: active.createdAt,
+                      seasonEnd: endsAt
+                     ) {
+                    return SeasonWaveService.status(now: Date(), schedule: schedule).cutoff
+                  }
+                  return svc.nextEliminationDate(for: elim) ?? .now
+                }()
+
+                if let endsAt = elim.endsAt,
+                   let schedule = SeasonWaveService.scheduleForSystemGame(
+                    winCondition: active.settings.winCondition,
+                    seasonStart: active.createdAt,
+                    seasonEnd: endsAt
+                   ) {
+                  let st = SeasonWaveService.status(now: Date(), schedule: schedule)
+                  Text("Next wave (Wave \(st.currentWave.number)/\(schedule.maxWaves)) in \(CountdownFormatter.ddHHmmss(to: cutoff))")
+                    .font(DS.Typography.caption)
+                    .foregroundStyle(DS.Palette.subtext(scheme))
+                    .monospacedDigit()
+                } else {
+                  Text("Next wave in \(CountdownFormatter.ddHHmmss(to: cutoff))")
+                    .font(DS.Typography.caption)
+                    .foregroundStyle(DS.Palette.subtext(scheme))
+                    .monospacedDigit()
+                }
                   .font(DS.Typography.caption)
                   .foregroundStyle(DS.Palette.subtext(scheme))
 

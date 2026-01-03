@@ -119,13 +119,7 @@ struct ActiveGameCard: View {
   }
 
   private func timeRemainingText(to cutoff: Date, now: Date) -> String {
-    let s = max(0, Int(cutoff.timeIntervalSince(now)))
-    let h = s / 3600
-    let m = (s % 3600) / 60
-    let sec = s % 60
-    if h > 0 { return "\(h)h \(m)m" }
-    if m > 0 { return "\(m)m \(sec)s" }
-    return "\(sec)s"
+    CountdownFormatter.ddHHmmss(to: cutoff, now: now)
   }
 }
 

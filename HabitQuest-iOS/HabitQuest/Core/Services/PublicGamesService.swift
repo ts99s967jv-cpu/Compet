@@ -119,6 +119,8 @@ final class PublicGamesService {
         ActiveGamesService(store: store).startEliminationStyleGame(from: game)
       } else if game.settings.winCondition == .levelVsLevelGoal {
         ActiveGamesService(store: store).startLevelVsLevelGame(from: game)
+      } else if game.settings.winCondition == .mostPointsAtEnd {
+        ActiveGamesService(store: store).startMostPointsGame(from: game)
       }
     }
   }
@@ -218,6 +220,8 @@ final class PublicGamesService {
       ActiveGamesService(store: store).startEliminationStyleGame(from: game)
     } else if game.settings.winCondition == .levelVsLevelGoal {
       ActiveGamesService(store: store).startLevelVsLevelGame(from: game)
+    } else if game.settings.winCondition == .mostPointsAtEnd {
+      ActiveGamesService(store: store).startMostPointsGame(from: game)
     }
   }
 
