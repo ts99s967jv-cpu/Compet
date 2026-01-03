@@ -165,6 +165,8 @@ struct ProfileSetupView: View {
       fitnessLevel: fitnessLevel,
       visibility: visibility,
       hasFitnessTracker: hasFitnessTracker,
+      fitnessElo: Int(FitnessRatingConstants.defaultCohortMeanElo),
+      fitnessEloUpdatedAt: nil,
       inventory: .empty,
       createdAt: now,
       updatedAt: now

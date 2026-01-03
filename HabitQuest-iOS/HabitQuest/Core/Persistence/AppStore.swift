@@ -8,6 +8,7 @@ final class AppStore {
     static let account = "habitquest.account"
     static let profile = "habitquest.profile"
     static let theme = "habitquest.theme"
+    static let measurementSystem = "habitquest.measurementSystem"
     static let friends = "habitquest.friends"
     static let friendRequests = "habitquest.friendRequests"
     static let invites = "habitquest.invites"
@@ -16,8 +17,18 @@ final class AppStore {
     static let clanBattles = "habitquest.clanBattles"
     static let habits = "habitquest.habits"
     static let publicGames = "habitquest.publicGames"
+    static let hiddenPublicGameIDs = "habitquest.hiddenPublicGameIDs"
     static let activeGames = "habitquest.activeGames"
     static let gameScores = "habitquest.gameScores"
+    static let fitnessEloV2Migrated = "habitquest.fitnessEloV2Migrated"
+    static let fitnessEloV2ConfidenceOverride = "habitquest.fitnessEloV2ConfidenceOverride"
+    static let fitnessEloHistory = "habitquest.fitnessEloHistory"
+    static let fitnessRatingSnapshot = "habitquest.fitnessRatingSnapshot"
+    static let didRequestHealthKitAuthorization = "habitquest.didRequestHealthKitAuthorization"
+    static let notifications = "habitquest.notifications"
+    static let didRequestNotificationAuthorization = "habitquest.didRequestNotificationAuthorization"
+    static let lastLeaderUserIDByActiveGameID = "habitquest.lastLeaderUserIDByActiveGameID"
+    static let lastMilestoneNotifiedPointsByKey = "habitquest.lastMilestoneNotifiedPointsByKey"
   }
 
   private let encoder = JSONEncoder()
@@ -27,6 +38,7 @@ final class AppStore {
   var account: Account?
   var profile: UserProfile?
   var theme: AppTheme = .system
+  var measurementSystem: MeasurementSystem = .metric
 
   var friends: [Friend] = []
   var friendRequests: [FriendRequest] = []
@@ -38,8 +50,24 @@ final class AppStore {
 
   var habits: [Habit] = []
   var publicGames: [PublicGame] = []
+  /// Client-side “hide” list so leaving a lobby removes it from your UI even if it remains browsable.
+  /// (This matches the expected UX of "Leave" meaning "don't show this again".)
+  var hiddenPublicGameIDs: Set<String> = []
   var activeGames: [ActiveGame] = []
   var gameScores: [GameScore] = []
+
+  var didMigrateFitnessEloV2: Bool = false
+  var fitnessEloConfidenceOverride: Double?
+  var fitnessEloHistory: [String: Int] = [:]
+  var fitnessRatingSnapshot: FitnessRating?
+  /// One-time guard so we request HealthKit permissions up-front only once.
+  var didRequestHealthKitAuthorization: Bool = false
+  var notifications: [AppNotification] = []
+  var didRequestNotificationAuthorization: Bool = false
+  /// activeGameID -> last leader userID (best-effort, only when we have enough scores).
+  var lastLeaderUserIDByActiveGameID: [String: String] = [:]
+  /// Composite key "activeGameID|roundIndex" -> last milestone points notified.
+  var lastMilestoneNotifiedPointsByKey: [String: Int] = [:]
 
   /// Ephemeral (not persisted) HealthKit-derived progress, keyed by habitID -> dayKey -> value.
   /// Used for auto-tracked habits like Steps so users don’t manually input Health data.
@@ -59,6 +87,7 @@ final class AppStore {
     account = load(Account.self, key: Keys.account)
     profile = load(UserProfile.self, key: Keys.profile)
     theme = load(AppTheme.self, key: Keys.theme) ?? .system
+    measurementSystem = load(MeasurementSystem.self, key: Keys.measurementSystem) ?? .metric
     friends = load([Friend].self, key: Keys.friends) ?? []
     friendRequests = load([FriendRequest].self, key: Keys.friendRequests) ?? []
     invites = load([GameInvite].self, key: Keys.invites) ?? []
@@ -67,14 +96,25 @@ final class AppStore {
     clanBattles = load([ClanBattle].self, key: Keys.clanBattles) ?? []
     habits = load([Habit].self, key: Keys.habits) ?? []
     publicGames = load([PublicGame].self, key: Keys.publicGames) ?? []
+    hiddenPublicGameIDs = Set(load([String].self, key: Keys.hiddenPublicGameIDs) ?? [])
     activeGames = load([ActiveGame].self, key: Keys.activeGames) ?? []
     gameScores = load([GameScore].self, key: Keys.gameScores) ?? []
+    didMigrateFitnessEloV2 = load(Bool.self, key: Keys.fitnessEloV2Migrated) ?? false
+    fitnessEloConfidenceOverride = load(Double.self, key: Keys.fitnessEloV2ConfidenceOverride)
+    fitnessEloHistory = load([String: Int].self, key: Keys.fitnessEloHistory) ?? [:]
+    fitnessRatingSnapshot = load(FitnessRating.self, key: Keys.fitnessRatingSnapshot)
+    didRequestHealthKitAuthorization = load(Bool.self, key: Keys.didRequestHealthKitAuthorization) ?? false
+    notifications = load([AppNotification].self, key: Keys.notifications) ?? []
+    didRequestNotificationAuthorization = load(Bool.self, key: Keys.didRequestNotificationAuthorization) ?? false
+    lastLeaderUserIDByActiveGameID = load([String: String].self, key: Keys.lastLeaderUserIDByActiveGameID) ?? [:]
+    lastMilestoneNotifiedPointsByKey = load([String: Int].self, key: Keys.lastMilestoneNotifiedPointsByKey) ?? [:]
   }
 
   func saveAll() {
     save(account, key: Keys.account)
     save(profile, key: Keys.profile)
     save(theme, key: Keys.theme)
+    save(measurementSystem, key: Keys.measurementSystem)
     save(friends, key: Keys.friends)
     save(friendRequests, key: Keys.friendRequests)
     save(invites, key: Keys.invites)
@@ -83,8 +123,18 @@ final class AppStore {
     save(clanBattles, key: Keys.clanBattles)
     save(habits, key: Keys.habits)
     save(publicGames, key: Keys.publicGames)
+    save(Array(hiddenPublicGameIDs), key: Keys.hiddenPublicGameIDs)
     save(activeGames, key: Keys.activeGames)
     save(gameScores, key: Keys.gameScores)
+    save(didMigrateFitnessEloV2, key: Keys.fitnessEloV2Migrated)
+    save(fitnessEloConfidenceOverride, key: Keys.fitnessEloV2ConfidenceOverride)
+    save(fitnessEloHistory, key: Keys.fitnessEloHistory)
+    save(fitnessRatingSnapshot, key: Keys.fitnessRatingSnapshot)
+    save(didRequestHealthKitAuthorization, key: Keys.didRequestHealthKitAuthorization)
+    save(notifications, key: Keys.notifications)
+    save(didRequestNotificationAuthorization, key: Keys.didRequestNotificationAuthorization)
+    save(lastLeaderUserIDByActiveGameID, key: Keys.lastLeaderUserIDByActiveGameID)
+    save(lastMilestoneNotifiedPointsByKey, key: Keys.lastMilestoneNotifiedPointsByKey)
   }
 
   func signOut() {
@@ -98,8 +148,94 @@ final class AppStore {
     clanBattles = []
     habits = []
     publicGames = []
+    hiddenPublicGameIDs = []
     activeGames = []
     gameScores = []
+    didMigrateFitnessEloV2 = false
+    fitnessEloConfidenceOverride = nil
+    fitnessEloHistory = [:]
+    fitnessRatingSnapshot = nil
+    didRequestHealthKitAuthorization = false
+    notifications = []
+    didRequestNotificationAuthorization = false
+    lastLeaderUserIDByActiveGameID = [:]
+    lastMilestoneNotifiedPointsByKey = [:]
+    saveAll()
+  }
+
+  // MARK: - Notifications
+
+  var unreadNotificationsCount: Int {
+    notifications.filter { !$0.isRead }.count
+  }
+
+  func addNotification(_ n: AppNotification) {
+    if notifications.contains(where: { $0.id == n.id }) { return }
+    notifications.insert(n, at: 0)
+    notifications.sort { $0.createdAt > $1.createdAt }
+    saveAll()
+  }
+
+  func markNotificationRead(_ id: String) {
+    guard let idx = notifications.firstIndex(where: { $0.id == id }) else { return }
+    notifications[idx].isRead = true
+    saveAll()
+  }
+
+  func markAllNotificationsRead() {
+    guard notifications.contains(where: { !$0.isRead }) else { return }
+    for i in notifications.indices { notifications[i].isRead = true }
+    saveAll()
+  }
+
+  func clearAllNotifications() {
+    notifications = []
+    saveAll()
+  }
+
+  func recordFitnessElo(elo: Int, at date: Date = Date()) {
+    let key = dayKey(date)
+    fitnessEloHistory[key] = elo
+    pruneFitnessHistory(keepingDays: 60, now: date)
+    saveAll()
+  }
+
+  func fitnessMomentum(days: Int = 30, now: Date = Date()) -> Int? {
+    guard let today = fitnessEloHistory[dayKey(now)] else { return nil }
+    guard let pastDate = Calendar.current.date(byAdding: .day, value: -days, to: now) else { return nil }
+    let past = fitnessEloHistory[dayKey(pastDate)] ?? nearestFitnessElo(onOrBefore: pastDate)
+    guard let past else { return nil }
+    return today - past
+  }
+
+  private func nearestFitnessElo(onOrBefore date: Date) -> Int? {
+    for i in 0...60 {
+      guard let d = Calendar.current.date(byAdding: .day, value: -i, to: date) else { break }
+      if let v = fitnessEloHistory[dayKey(d)] { return v }
+    }
+    return nil
+  }
+
+  private func pruneFitnessHistory(keepingDays: Int, now: Date) {
+    guard let cutoff = Calendar.current.date(byAdding: .day, value: -keepingDays, to: now) else { return }
+    let cutoffKey = dayKey(cutoff)
+    fitnessEloHistory = fitnessEloHistory.filter { $0.key >= cutoffKey }
+  }
+
+  private func dayKey(_ date: Date) -> String {
+    let d = Calendar.current.startOfDay(for: date)
+    let f = DateFormatter()
+    f.calendar = Calendar(identifier: .gregorian)
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.timeZone = TimeZone(secondsFromGMT: 0)
+    f.dateFormat = "yyyy-MM-dd"
+    return f.string(from: d)
+  }
+
+  func hidePublicGame(gameID: String) {
+    hiddenPublicGameIDs.insert(gameID)
+    publicGames.removeAll { $0.id == gameID }
+    activeGames.removeAll { $0.id == "ag_" + gameID }
     saveAll()
   }
 
@@ -457,6 +593,10 @@ final class AppStore {
 
   var activeHabits: [Habit] {
     habits.filter { $0.isActive }
+  }
+
+  var archivedHabits: [Habit] {
+    habits.filter { !$0.isActive }
   }
 
   func todayProgressFraction(calendar: Calendar = .current, now: Date = Date()) -> Double {

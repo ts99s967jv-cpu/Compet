@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct FriendsView: View {
+  @Environment(\.dismiss) private var dismiss
   @Bindable var store: AppStore
   @Environment(\.colorScheme) private var scheme
 
@@ -9,6 +10,8 @@ struct FriendsView: View {
   @State private var inviteFriend: PublicUser?
   @State private var viewUser: PublicUser?
   @State private var isSearching: Bool = false
+  @State private var statusMessage: String?
+  @State private var searchTask: Task<Void, Never>?
 
   private let directory = UserDirectoryService()
 
@@ -21,10 +24,17 @@ struct FriendsView: View {
             .padding(.horizontal, DS.Spacing.xl)
             .padding(.top, DS.Spacing.l)
 
-          Text("Search people, view profiles, add friends, and invite them to games.")
+          Text("Search people, manage your friendships, and invite friends to games.")
             .font(DS.Typography.body)
             .foregroundStyle(DS.Palette.subtext(scheme))
             .padding(.horizontal, DS.Spacing.xl)
+
+          if let statusMessage {
+            Text(statusMessage)
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .padding(.horizontal, DS.Spacing.xl)
+          }
 
           if !store.friendRequests.isEmpty {
             DSSectionHeaderRow(title: "Requests", systemImage: "person.crop.circle.badge.plus")
@@ -49,13 +59,10 @@ struct FriendsView: View {
                   isFriend: store.friends.contains(where: { $0.user.id == user.id }),
                   view: { viewUser = user },
                   add: {
-                    if Backend.shared.isAvailable {
-                      Task { await BackendFriendsService(store: store).sendRequest(to: user.id) }
-                    } else {
-                      FriendsService(store: store).addFriend(user)
-                    }
+                    Task { await addFriendTapped(user: user) }
                   },
-                  invite: { inviteFriend = user }
+                  invite: { inviteFriend = user },
+                  remove: nil
                 )
                 if user.id != searchResults.last?.id {
                   Divider().overlay(DS.Palette.separator(scheme))
@@ -94,7 +101,7 @@ struct FriendsView: View {
               VStack(alignment: .leading, spacing: DS.Spacing.s) {
                 Text("No friends yet")
                   .font(DS.Typography.section)
-                Text("Search above to add someone.")
+                Text("Use search above to find someone by name or @handle.")
                   .font(DS.Typography.body)
                   .foregroundStyle(DS.Palette.subtext(scheme))
               }
@@ -105,7 +112,8 @@ struct FriendsView: View {
                   isFriend: true,
                   view: { viewUser = friend.user },
                   add: {},
-                  invite: { inviteFriend = friend.user }
+                  invite: { inviteFriend = friend.user },
+                  remove: { Task { await removeFriendTapped(userID: friend.user.id) } }
                 )
                 if friend.id != store.friends.last?.id {
                   Divider().overlay(DS.Palette.separator(scheme))
@@ -123,35 +131,8 @@ struct FriendsView: View {
       .dsScreenBackground()
       .searchable(text: $searchQuery, prompt: "Search by name or handle")
       .onChange(of: searchQuery) { _, newValue in
-        Task {
-          let q = newValue
-          let trimmed = q.trimmingCharacters(in: .whitespacesAndNewlines)
-          guard !trimmed.isEmpty else {
-            await MainActor.run { searchResults = [] }
-            return
-          }
-
-          if Backend.shared.isAvailable {
-            await MainActor.run { isSearching = true }
-            do {
-              let results = try await Backend.shared.searchUsers(query: trimmed)
-              let meID = store.profile?.id
-              await MainActor.run {
-                searchResults = results.filter { $0.id != meID }
-                isSearching = false
-              }
-            } catch {
-              await MainActor.run {
-                searchResults = []
-                isSearching = false
-              }
-            }
-          } else {
-            await MainActor.run {
-              searchResults = directory.search(query: trimmed, excluding: store.profile?.id)
-            }
-          }
-        }
+        searchTask?.cancel()
+        searchTask = Task { await runSearch(query: newValue) }
       }
       .refreshable {
         await BackendFriendsService(store: store).refresh()
@@ -162,6 +143,93 @@ struct FriendsView: View {
       .sheet(item: $viewUser) { user in
         PublicUserProfileSheet(store: store, user: user)
       }
+      .presentationDragIndicator(.visible)
+      .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button("Close") { dismiss() }
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+      }
+    }
+  }
+
+  private func normalizedSearchQuery(_ s: String) -> String {
+    var q = s.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    if q.hasPrefix("@") { q.removeFirst() }
+    return q
+  }
+
+  private func runSearch(query: String) async {
+    let q = normalizedSearchQuery(query)
+    guard !q.isEmpty else {
+      await MainActor.run {
+        searchResults = []
+        isSearching = false
+        statusMessage = nil
+      }
+      return
+    }
+
+    // Simple debounce
+    try? await Task.sleep(nanoseconds: 250_000_000)
+    if Task.isCancelled { return }
+
+    if Backend.shared.isAvailable {
+      await MainActor.run { isSearching = true; statusMessage = nil }
+      do {
+        let results = try await Backend.shared.searchUsers(query: q)
+        let meID = store.profile?.id
+        await MainActor.run {
+          searchResults = results.filter { $0.id != meID }
+          isSearching = false
+          if searchResults.isEmpty {
+            statusMessage = "No matches. If you searched by @handle, ensure the other user completed profile setup."
+          }
+        }
+      } catch {
+        await MainActor.run {
+          searchResults = []
+          isSearching = false
+          statusMessage = "Search failed. This is usually a Supabase permissions (RLS) issue on the `profiles` table."
+        }
+      }
+    } else {
+      await MainActor.run {
+        searchResults = directory.search(query: q, excluding: store.profile?.id)
+        statusMessage = nil
+      }
+    }
+  }
+
+  private func addFriendTapped(user: PublicUser) async {
+    statusMessage = nil
+    if Backend.shared.isAvailable {
+      do {
+        try await Backend.shared.sendFriendRequest(to: user.id)
+        await BackendFriendsService(store: store).refresh()
+        await MainActor.run { statusMessage = "Friend request sent to @\(user.handle)." }
+      } catch {
+        await MainActor.run { statusMessage = "Couldn’t send friend request (Supabase permissions/RLS)."}
+      }
+    } else {
+      FriendsService(store: store).addFriend(user)
+      await MainActor.run { statusMessage = "Friend added (local)." }
+    }
+  }
+
+  private func removeFriendTapped(userID: String) async {
+    statusMessage = nil
+    if Backend.shared.isAvailable {
+      do {
+        try await Backend.shared.removeFriend(userID: userID)
+        await BackendFriendsService(store: store).refresh()
+        await MainActor.run { statusMessage = "Friend removed." }
+      } catch {
+        await MainActor.run { statusMessage = "Couldn’t remove friend (Supabase permissions/RLS)." }
+      }
+    } else {
+      FriendsService(store: store).removeFriend(userID: userID)
+      await MainActor.run { statusMessage = "Friend removed (local)." }
     }
   }
 }
@@ -173,6 +241,7 @@ private struct FriendRow: View {
   let view: () -> Void
   let add: () -> Void
   let invite: () -> Void
+  let remove: (() -> Void)?
 
   var body: some View {
     HStack(spacing: 12) {
@@ -204,8 +273,14 @@ private struct FriendRow: View {
       .buttonStyle(.plain)
 
       if isFriend {
-        Button("Invite") { invite() }
-          .buttonStyle(.bordered)
+        HStack(spacing: 8) {
+          Button("Invite") { invite() }
+            .buttonStyle(.bordered)
+          if let remove {
+            Button("Remove", role: .destructive) { remove() }
+              .buttonStyle(.bordered)
+          }
+        }
       } else {
         HStack(spacing: 8) {
           Button("Invite") { invite() }

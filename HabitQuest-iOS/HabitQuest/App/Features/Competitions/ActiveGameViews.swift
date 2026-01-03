@@ -6,12 +6,14 @@ struct IdentifiedID: Identifiable, Hashable {
 
 struct ActiveGameCard: View {
   @Environment(\.colorScheme) private var scheme
+  @Bindable var store: AppStore
   let game: ActiveGame
   let tapped: () -> Void
 
   var body: some View {
     Button(action: tapped) {
       VStack(alignment: .leading, spacing: DS.Spacing.s) {
+        let now = Date()
         HStack {
           Text(game.title)
             .font(DS.Typography.section)
@@ -27,6 +29,16 @@ struct ActiveGameCard: View {
           .foregroundStyle(DS.Palette.subtext(scheme))
           .lineLimit(2)
 
+        TimelineView(.periodic(from: .now, by: 1)) { ctx in
+          let now = ctx.date
+          if let wave = nextWaveInfo(now: now) {
+            Text("\(wave.label): \(CountdownFormatter.ddHHmmss(to: wave.date, now: now))")
+              .font(DS.Typography.caption.weight(.semibold))
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .monospacedDigit()
+          }
+        }
+
         if (game.settings.winCondition == .eliminationLastManStanding
             || game.settings.winCondition == .kingOfMonth
             || game.settings.winCondition == .kingOfYear),
@@ -37,10 +49,23 @@ struct ActiveGameCard: View {
               .foregroundStyle(DS.Palette.subtext(scheme))
               .monospacedDigit()
             Spacer()
-            Text("Round \(elim.roundIndex + 1)")
-              .font(DS.Typography.caption.weight(.semibold))
-              .foregroundStyle(DS.Palette.subtext(scheme))
-              .monospacedDigit()
+            if let endsAt = elim.endsAt,
+               let schedule = SeasonWaveService.scheduleForSystemGame(
+                winCondition: game.settings.winCondition,
+                seasonStart: game.createdAt,
+                seasonEnd: endsAt
+               ) {
+              let st = SeasonWaveService.status(now: now, schedule: schedule)
+              Text("Wave \(st.currentWave.number)/\(schedule.maxWaves)")
+                .font(DS.Typography.caption.weight(.semibold))
+                .foregroundStyle(DS.Palette.subtext(scheme))
+                .monospacedDigit()
+            } else {
+              Text("Round \(elim.roundIndex + 1)")
+                .font(DS.Typography.caption.weight(.semibold))
+                .foregroundStyle(DS.Palette.subtext(scheme))
+                .monospacedDigit()
+            }
           }
         }
       }
@@ -51,6 +76,51 @@ struct ActiveGameCard: View {
 
   private func remainingCount(_ game: ActiveGame, _ elim: EliminationState) -> Int {
     game.players.filter { !elim.eliminatedUserIDs.contains($0.id) }.count
+  }
+
+  private func nextWaveInfo(now: Date) -> (label: String, date: Date)? {
+    switch game.settings.winCondition {
+    case .levelVsLevelGoal:
+      guard let state = game.levelVsLevel else { return nil }
+      return ("Next wave", state.turnStartedAt.addingTimeInterval(24 * 60 * 60))
+    case .mostPointsAtEnd:
+      let endsAt = game.createdAt.addingTimeInterval(TimeInterval(game.settings.timeLimitDays) * 24 * 60 * 60)
+      return ("Ends", endsAt)
+    case .eliminationLastManStanding, .kingOfMonth, .kingOfYear:
+      guard let elim = game.elimination else { return nil }
+      if let endsAt = elim.endsAt,
+         let schedule = SeasonWaveService.scheduleForSystemGame(
+          winCondition: game.settings.winCondition,
+          seasonStart: game.createdAt,
+          seasonEnd: endsAt
+         ) {
+        let st = SeasonWaveService.status(now: now, schedule: schedule)
+        if st.isSeasonComplete { return ("Final wave", schedule.seasonEnd) }
+        return ("Next wave", st.cutoff)
+      } else {
+        let cutoff = nextCutoff(from: elim.roundStartedAt, cadence: elim.cadence) ?? now
+        if let endsAt = elim.endsAt, (cutoff >= endsAt || now >= endsAt) {
+          return ("Final wave", endsAt)
+        }
+        return ("Next wave", cutoff)
+      }
+    }
+  }
+
+  private func nextCutoff(from start: Date, cadence: EliminationCadence) -> Date? {
+    let cal = Calendar.current
+    switch cadence {
+    case .daily:
+      return cal.date(byAdding: .day, value: 1, to: start)
+    case .weekly:
+      return cal.date(byAdding: .day, value: 7, to: start)
+    case .monthly:
+      return cal.date(byAdding: .month, value: 1, to: start)
+    }
+  }
+
+  private func timeRemainingText(to cutoff: Date, now: Date) -> String {
+    CountdownFormatter.ddHHmmss(to: cutoff, now: now)
   }
 }
 
@@ -95,19 +165,6 @@ struct ActiveGameDetailSheet: View {
               .padding(.horizontal, DS.Spacing.xl)
             }
 
-            Button {
-              withAnimation(.easeInOut(duration: 0.25)) {
-                ActiveGamesService(store: store).simulateEndOfRound(gameID: gameID)
-              }
-            } label: {
-              Text("Simulate next elimination (prototype)")
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, DS.Spacing.m)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(DS.Palette.accent)
-            .padding(.horizontal, DS.Spacing.xl)
-            .padding(.top, DS.Spacing.s)
           } else if let game {
             mostPointsContent(game: game)
           }
@@ -215,7 +272,7 @@ struct ActiveGameDetailSheet: View {
       if primaryView == .map {
         LevelVsLevelTowerCard(
           title: game.title,
-          subtitle: "Ends in \(timeRemainingText(to: cutoff, now: now)) • Target \(state.currentTarget)",
+          subtitle: "Next wave in \(timeRemainingText(to: cutoff, now: now)) • Target \(state.currentTarget)",
           turnIndex: state.turnIndex,
           currentTarget: state.currentTarget,
           lastAchievedScore: state.lastAchievedScore,
@@ -229,7 +286,7 @@ struct ActiveGameDetailSheet: View {
           let activeName = game.players.first(where: { $0.id == activeUserID })?.displayName ?? "Player"
           Text("Up now: \(activeName)")
             .font(DS.Typography.body.weight(.semibold))
-          Text("Target: \(state.currentTarget) • Ends in \(timeRemainingText(to: cutoff, now: now))")
+          Text("Target: \(state.currentTarget) • Next wave in \(timeRemainingText(to: cutoff, now: now))")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
           if let last = state.lastAchievedScore {
@@ -294,7 +351,17 @@ struct ActiveGameDetailSheet: View {
   @ViewBuilder
   private func eliminationContent(game: ActiveGame, elim: EliminationState) -> some View {
     let svc = ActiveGamesService(store: store)
-    let cutoff = svc.nextEliminationDate(for: elim) ?? .now
+    let cutoff: Date = {
+      if let endsAt = elim.endsAt,
+         let schedule = SeasonWaveService.scheduleForSystemGame(
+          winCondition: game.settings.winCondition,
+          seasonStart: game.createdAt,
+          seasonEnd: endsAt
+         ) {
+        return SeasonWaveService.status(now: now, schedule: schedule).cutoff
+      }
+      return svc.nextEliminationDate(for: elim) ?? .now
+    }()
     let remaining = game.players.filter { !elim.eliminatedUserIDs.contains($0.id) }
     let rowsDesc = remaining
       .map { ($0, svc.leaderboardPointsFor(activeGameID: game.id, userID: $0.id, roundIndex: elim.roundIndex, seed: elim.roundStartedAt)) }
@@ -319,17 +386,21 @@ struct ActiveGameDetailSheet: View {
 
     if primaryView == .map {
       let map = game.settings.mapStyle.resolved(for: game.settings.activity)
-      let maxScore = max(1, rowsDesc.first?.1 ?? 1)
-      GameMapTrackCard(
+      let maxDistance = max(0, rowsDesc.first?.1 ?? 0)
+      let visibleMaxDistance = max(1, maxDistance + 5_000)
+      let wave = nextWave(for: game, elim: elim, cutoff: cutoff, now: now)
+      GameMapExplorerCard(
         title: game.title,
-        subtitle: "\(subtitle(for: game)) • Ends in \(timeRemainingText(to: cutoff, now: now))",
+        subtitle: "\(subtitle(for: game)) • \(wave.label) in \(timeRemainingText(to: wave.date, now: now))",
         style: map,
-        checkpoints: defaultCheckpoints(maxScore: maxScore, activity: game.settings.activity),
+        checkpoints: defaultCheckpoints(maxScore: visibleMaxDistance, activity: game.settings.activity),
         players: rowsDesc.map { (u, s) in
-          GameMapPlayer(
+          let raw = Double(max(0, s)) / Double(visibleMaxDistance)
+          let minProgress = min(0.04, 120.0 / Double(max(1, visibleMaxDistance)))
+          return GameMapPlayer(
             id: u.id,
             displayName: u.displayName,
-            progress: Double(s) / Double(maxScore),
+            progress: min(0.995, max(minProgress, raw)),
             isMe: u.id == store.profile?.id
           )
         }
@@ -337,9 +408,21 @@ struct ActiveGameDetailSheet: View {
       .padding(.horizontal, DS.Spacing.xl)
 
       VStack(alignment: .leading, spacing: DS.Spacing.s) {
-        Text("Round \(elim.roundIndex + 1) • Next elimination \(cutoff.formatted(date: .abbreviated, time: .shortened))")
-          .font(DS.Typography.caption.weight(.semibold))
-          .foregroundStyle(DS.Palette.subtext(scheme))
+        if let endsAt = elim.endsAt,
+           let schedule = SeasonWaveService.scheduleForSystemGame(
+            winCondition: game.settings.winCondition,
+            seasonStart: game.createdAt,
+            seasonEnd: endsAt
+           ) {
+          let st = SeasonWaveService.status(now: now, schedule: schedule)
+          Text("Wave \(st.currentWave.number)/\(schedule.maxWaves) • \(wave.label) \(waveDisplayDate(wave.date, for: game).formatted(date: .abbreviated, time: .omitted))")
+            .font(DS.Typography.caption.weight(.semibold))
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        } else {
+          Text("Round \(elim.roundIndex + 1) • \(wave.label) \(waveDisplayDate(wave.date, for: game).formatted(date: .abbreviated, time: .omitted))")
+            .font(DS.Typography.caption.weight(.semibold))
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
         if projected > 0 {
           Text("Elimination zone: bottom \(projected) player\(projected == 1 ? "" : "s")")
             .font(DS.Typography.caption)
@@ -348,6 +431,19 @@ struct ActiveGameDetailSheet: View {
       }
       .dsCard()
       .padding(.horizontal, DS.Spacing.xl)
+
+      if let endsAt = elim.endsAt, (game.settings.winCondition == .kingOfMonth || game.settings.winCondition == .kingOfYear) {
+        let nextCycle = Calendar.current.date(byAdding: .second, value: 1, to: endsAt) ?? endsAt
+        VStack(alignment: .leading, spacing: DS.Spacing.s) {
+          Text("Season")
+            .font(DS.Typography.section)
+          Text("Ends in \(timeRemainingText(to: endsAt, now: now)) • Next cycle \(nextCycle.formatted(date: .abbreviated, time: .omitted))")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+        .dsCard()
+        .padding(.horizontal, DS.Spacing.xl)
+      }
     } else {
       VStack(alignment: .leading, spacing: DS.Spacing.s) {
         Text("Schedule")
@@ -358,15 +454,28 @@ struct ActiveGameDetailSheet: View {
             .foregroundStyle(DS.Palette.subtext(scheme))
         }
 
-        Text("Round \(elim.roundIndex + 1) • \(elim.cadence.title) elimination")
+        if let endsAt = elim.endsAt,
+           let schedule = SeasonWaveService.scheduleForSystemGame(
+            winCondition: game.settings.winCondition,
+            seasonStart: game.createdAt,
+            seasonEnd: endsAt
+           ) {
+          let st = SeasonWaveService.status(now: now, schedule: schedule)
+          Text("Wave \(st.currentWave.number)/\(schedule.maxWaves) • \(elim.cadence.title) elimination")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        } else {
+          Text("Round \(elim.roundIndex + 1) • \(elim.cadence.title) elimination")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
+
+        let wave = nextWave(for: game, elim: elim, cutoff: cutoff, now: now)
+        Text("\(wave.label): \(waveDisplayDate(wave.date, for: game).formatted(date: .abbreviated, time: .omitted))")
           .font(DS.Typography.caption)
           .foregroundStyle(DS.Palette.subtext(scheme))
 
-        Text("Next elimination: \(cutoff.formatted(date: .abbreviated, time: .shortened))")
-          .font(DS.Typography.caption)
-          .foregroundStyle(DS.Palette.subtext(scheme))
-
-        Text("Time remaining: \(timeRemainingText(to: cutoff, now: now))")
+        Text("Time remaining: \(timeRemainingText(to: wave.date, now: now))")
           .font(DS.Typography.caption.weight(.semibold))
           .foregroundStyle(DS.Palette.subtext(scheme))
       }
@@ -429,7 +538,8 @@ struct ActiveGameDetailSheet: View {
       .map { ($0, svc.leaderboardPointsFor(activeGameID: game.id, userID: $0.id, roundIndex: 0, seed: seed)) }
       .sorted { $0.1 > $1.1 }
 
-    let maxScore = max(1, rowsDesc.first?.1 ?? 1)
+    let maxDistance = max(0, rowsDesc.first?.1 ?? 0)
+    let visibleMaxDistance = max(1, maxDistance + 5_000)
     let endsAt = game.createdAt.addingTimeInterval(TimeInterval(game.settings.timeLimitDays) * 24 * 60 * 60)
 
     Picker("View", selection: $primaryView) {
@@ -444,16 +554,18 @@ struct ActiveGameDetailSheet: View {
 
     if primaryView == .map {
       let map = game.settings.mapStyle.resolved(for: game.settings.activity)
-      GameMapTrackCard(
+      GameMapExplorerCard(
         title: game.title,
         subtitle: "\(game.settings.activity.title) • Ends in \(timeRemainingText(to: endsAt, now: now))",
         style: map,
-        checkpoints: defaultCheckpoints(maxScore: maxScore, activity: game.settings.activity),
+        checkpoints: defaultCheckpoints(maxScore: visibleMaxDistance, activity: game.settings.activity),
         players: rowsDesc.map { (u, s) in
-          GameMapPlayer(
+          let raw = Double(max(0, s)) / Double(visibleMaxDistance)
+          let minProgress = min(0.04, 120.0 / Double(max(1, visibleMaxDistance)))
+          return GameMapPlayer(
             id: u.id,
             displayName: u.displayName,
-            progress: Double(s) / Double(maxScore),
+            progress: min(0.995, max(minProgress, raw)),
             isMe: u.id == meID
           )
         }
@@ -508,21 +620,41 @@ struct ActiveGameDetailSheet: View {
 
   private func defaultCheckpoints(maxScore: Int, activity: GameActivity) -> [GameCheckpoint] {
     let fracs: [Double] = [0.25, 0.5, 0.75, 1.0]
+    var lastValue = 0
+    let step = stepSizeForCheckpoints(maxScore: maxScore, activity: activity)
     return fracs.map { f in
       let raw = Int((Double(maxScore) * f).rounded())
-      let rounded = roundForDisplay(raw, activity: activity)
-      return GameCheckpoint(
-        id: "\(f)",
-        progress: f,
-        label: checkpointLabel(value: rounded, activity: activity)
-      )
+      let target = (f >= 0.999) ? maxScore : raw
+      var rounded = roundForDisplay(target, activity: activity, step: step)
+      // Ensure labels are monotonic so they don't all collapse to the same number (e.g. 500).
+      if rounded <= lastValue, f < 0.999 {
+        rounded = min(maxScore, lastValue + step)
+      }
+      lastValue = max(lastValue, rounded)
+      return GameCheckpoint(id: "\(f)", progress: f, label: checkpointLabel(value: rounded, activity: activity))
     }
   }
 
-  private func roundForDisplay(_ v: Int, activity: GameActivity) -> Int {
+  private func stepSizeForCheckpoints(maxScore: Int, activity: GameActivity) -> Int {
     switch activity {
     case .steps:
-      let step = 500
+      // Use smaller steps for small games so checkpoints look meaningful.
+      if maxScore < 80 { return 10 }
+      if maxScore < 200 { return 25 }
+      if maxScore < 400 { return 50 }
+      if maxScore < 1200 { return 100 }
+      if maxScore < 4000 { return 250 }
+      if maxScore < 12000 { return 500 }
+      if maxScore < 30000 { return 1000 }
+      return 2000
+    default:
+      return 1
+    }
+  }
+
+  private func roundForDisplay(_ v: Int, activity: GameActivity, step: Int) -> Int {
+    switch activity {
+    case .steps:
       return max(step, (v / step) * step)
     case .running, .cycling, .swimming:
       return max(1, v)
@@ -543,11 +675,13 @@ struct ActiveGameDetailSheet: View {
   }
 
   private func startAutoSyncLoop() async {
-    // Update countdown every second; sync score once per minute.
+    // Update countdown every second; sync score once per minute; tick game waves locally.
     let syncInterval: TimeInterval = 60
     var lastSync: Date = .distantPast
     while !Task.isCancelled {
       now = Date()
+      // Advances elimination waves and resolves games on schedule.
+      ActiveGamesService(store: store).tick(now: now)
       if now.timeIntervalSince(lastSync) >= syncInterval, let game {
         lastSync = now
         if !isSyncing {
@@ -561,13 +695,31 @@ struct ActiveGameDetailSheet: View {
   }
 
   private func timeRemainingText(to cutoff: Date, now: Date) -> String {
-    let s = max(0, Int(cutoff.timeIntervalSince(now)))
-    let h = s / 3600
-    let m = (s % 3600) / 60
-    let sec = s % 60
-    if h > 0 { return "\(h)h \(m)m" }
-    if m > 0 { return "\(m)m \(sec)s" }
-    return "\(sec)s"
+    CountdownFormatter.ddHHmmss(to: cutoff, now: now)
+  }
+
+  private func nextWave(for game: ActiveGame, elim: EliminationState, cutoff: Date, now: Date) -> (label: String, date: Date) {
+    if let endsAt = elim.endsAt,
+       let schedule = SeasonWaveService.scheduleForSystemGame(
+        winCondition: game.settings.winCondition,
+        seasonStart: game.createdAt,
+        seasonEnd: endsAt
+       ) {
+      let st = SeasonWaveService.status(now: now, schedule: schedule)
+      if st.isSeasonComplete { return ("Final wave", schedule.seasonEnd) }
+      return ("Next wave", st.cutoff)
+    } else if let endsAt = elim.endsAt {
+      if now >= endsAt { return ("Final wave", endsAt) }
+      if cutoff >= endsAt { return ("Final wave", endsAt) }
+      return ("Next wave", cutoff)
+    } else {
+      return ("Next wave", cutoff)
+    }
+  }
+
+  private func waveDisplayDate(_ waveDate: Date, for game: ActiveGame) -> Date {
+    _ = game
+    return waveDate
   }
 }
 

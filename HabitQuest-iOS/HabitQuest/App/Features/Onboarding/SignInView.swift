@@ -9,7 +9,6 @@ struct SignInView: View {
   @State private var password: String = ""
   @State private var mode: AuthMode = .signUp
   @State private var isLoading: Bool = false
-  @State private var useMagicLinkForLogin: Bool = true
   @State private var infoMessage: String?
 
   private enum AuthMode: String, CaseIterable, Identifiable {
@@ -76,25 +75,19 @@ struct SignInView: View {
             )
         }
 
-        if mode == .signIn {
-          Toggle("Use magic link", isOn: $useMagicLinkForLogin)
-        }
-
-        if mode == .signUp || (mode == .signIn && !useMagicLinkForLogin) {
-          SecureField("Password", text: $password)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .textContentType(mode == .signUp ? .newPassword : .password)
-            .padding(DS.Spacing.l)
-            .background(
-              RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
-                .fill(DS.Palette.surface(scheme))
-            )
-            .overlay(
-              RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
-                .stroke(DS.Palette.separator(scheme), lineWidth: 1)
-            )
-        }
+        SecureField("Password", text: $password)
+          .textInputAutocapitalization(.never)
+          .autocorrectionDisabled()
+          .textContentType(mode == .signUp ? .newPassword : .password)
+          .padding(DS.Spacing.l)
+          .background(
+            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+              .fill(DS.Palette.surface(scheme))
+          )
+          .overlay(
+            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+              .stroke(DS.Palette.separator(scheme), lineWidth: 1)
+          )
 
         Button {
           Task { await submit() }
@@ -165,7 +158,7 @@ struct SignInView: View {
         return nil
       }
     }
-    if mode == .signUp || (mode == .signIn && !useMagicLinkForLogin) {
+    if mode == .signUp || mode == .signIn {
       guard isPasswordValid(p) else {
         errorMessage = "Password must be 8+ chars and include upper, lower, number, and symbol."
         return nil
@@ -179,19 +172,14 @@ struct SignInView: View {
     isLoading = true
     defer { isLoading = false }
 
-    // If Supabase isn't configured (or the SDK isn't linked), keep the old local prototype behavior.
+    // Require real backend auth (no local prototype accounts).
     if !Backend.shared.isAvailable {
-      if mode == .signUp {
-        store.account = Account(userID: v.email, email: v.email, username: v.username, createdAt: Date())
-        store.saveAll()
+      if !BackendConfig.isSupabaseConfigured {
+        errorMessage = BackendConfig.supabaseConfigStatusMessage ?? "Backend not configured."
+      } else if !BackendConfig.hasSupabaseSDK {
+        errorMessage = "Supabase SDK isn't linked (missing Swift Package dependency)."
       } else {
-        if !BackendConfig.isSupabaseConfigured {
-          errorMessage = BackendConfig.supabaseConfigStatusMessage ?? "Backend not configured."
-        } else if !BackendConfig.hasSupabaseSDK {
-          errorMessage = "Supabase SDK isn't linked (missing Swift Package dependency)."
-        } else {
-          errorMessage = "Backend unavailable."
-        }
+        errorMessage = "Backend unavailable."
       }
       return
     }
@@ -200,37 +188,46 @@ struct SignInView: View {
       let userID: String
       switch mode {
       case .signUp:
-        userID = try await Backend.shared.signUp(email: v.email, password: v.password)
-        // Create a minimal profile row so the user can be found immediately by username.
-        let now = Date()
-        let profile = UserProfile(
-          id: userID,
-          displayName: v.username,
-          handle: v.username,
-          age: 18,
-          gender: .preferNotToSay,
-          fitnessLevel: .beginner,
-          visibility: .public,
-          hasFitnessTracker: false,
-          fitnessElo: nil,
-          fitnessEloUpdatedAt: nil,
-          inventory: .empty,
-          createdAt: now,
-          updatedAt: now
-        )
-        try await Backend.shared.upsertMyProfile(profile)
-      case .signIn:
-        if useMagicLinkForLogin {
-          guard let redirect = BackendConfig.supabaseRedirectURL else {
-            errorMessage = "Missing SUPABASE_REDIRECT_URL."
-            return
-          }
-          try await Backend.shared.sendMagicLink(email: v.email, redirectTo: redirect)
-          infoMessage = "Check your email for a magic link to finish logging in."
-          return
-        } else {
+        _ = try await Backend.shared.signUp(email: v.email, password: v.password)
+        // Many Supabase projects require email confirmation. If so, sign-in will fail until confirmed.
+        do {
           userID = try await Backend.shared.signIn(email: v.email, password: v.password)
+        } catch {
+          let ns = error as NSError
+          let desc = (ns.userInfo[NSLocalizedDescriptionKey] as? String) ?? error.localizedDescription
+          infoMessage = "Account created, but login isn’t available yet: \(desc)"
+          errorMessage = """
+Your Supabase project likely requires email confirmation before sign-in, but the confirmation email wasn’t received.
+
+Fix options:
+- Supabase Dashboard → Authentication → Providers → Email: turn OFF “Confirm email” (recommended for testing), or
+- Configure SMTP + check spam so Supabase can deliver the confirmation email.
+"""
+          return
         }
+
+        // Ensure a profile exists once we have a session.
+        if (try await Backend.shared.fetchMyProfile()) == nil {
+          let now = Date()
+          let profile = UserProfile(
+            id: userID,
+            displayName: v.username,
+            handle: v.username,
+            age: 18,
+            gender: .preferNotToSay,
+            fitnessLevel: .beginner,
+            visibility: .public,
+            hasFitnessTracker: false,
+            fitnessElo: Int(FitnessRatingConstants.defaultCohortMeanElo),
+            fitnessEloUpdatedAt: nil,
+            inventory: .empty,
+            createdAt: now,
+            updatedAt: now
+          )
+          try await Backend.shared.upsertMyProfile(profile)
+        }
+      case .signIn:
+        userID = try await Backend.shared.signIn(email: v.email, password: v.password)
       }
 
       let fetchedProfile = try await Backend.shared.fetchMyProfile()
@@ -244,8 +241,13 @@ struct SignInView: View {
       )
       store.profile = fetchedProfile
       store.saveAll()
+
+      // Pull down server state (profile + games + friends) immediately after auth.
+      await BackendSyncService(store: store).syncAll()
     } catch {
-      errorMessage = "Sign in failed. Check your credentials and Supabase setup."
+      let ns = error as NSError
+      let desc = (ns.userInfo[NSLocalizedDescriptionKey] as? String) ?? error.localizedDescription
+      errorMessage = "Auth failed: \(desc)"
     }
   }
 

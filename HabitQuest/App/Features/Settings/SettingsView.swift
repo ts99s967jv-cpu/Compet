@@ -2,72 +2,108 @@ import SwiftUI
 
 struct SettingsView: View {
   @Bindable var store: AppStore
+  @Environment(\.colorScheme) private var scheme
 
   var body: some View {
     NavigationStack {
-      Form {
-        if let profile = store.profile {
-          Section("Profile") {
-            LabeledContent("Name", value: profile.displayName)
-            LabeledContent("Handle", value: "@\(profile.handle)")
+      ScrollView {
+        VStack(alignment: .leading, spacing: DS.Spacing.l) {
+          Text("Settings")
+            .font(DS.Typography.title)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.top, DS.Spacing.l)
 
-            Picker("Visibility", selection: $store.profile!.visibility) {
-              ForEach(ProfileVisibility.allCases) { v in
-                Text(v.title).tag(v)
+          DSSectionHeaderRow(title: "Habits", systemImage: "checkmark.circle")
+          ProfileHabitsSection(store: store)
+            .padding(.horizontal, DS.Spacing.xl)
+
+          DSSectionHeaderRow(title: "Appearance", systemImage: "circle.lefthalf.filled")
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Text("Theme")
+              .font(DS.Typography.section)
+            Picker("Theme", selection: $store.theme) {
+              ForEach(AppTheme.allCases) { t in
+                Text(t.title).tag(t)
               }
             }
-            .onChange(of: store.profile?.visibility) { _, _ in
-              store.profile?.updatedAt = Date()
-              store.saveAll()
-            }
+            .pickerStyle(.segmented)
+            .tint(DS.Palette.accent)
+            .onChange(of: store.theme) { _, _ in store.saveAll() }
           }
-        }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
 
-        Section("Theme") {
-          Picker("App theme", selection: $store.theme) {
-            ForEach(AppTheme.allCases) { theme in
-              Text(theme.title).tag(theme)
-            }
-          }
-          .onChange(of: store.theme) { _, _ in store.saveAll() }
-        }
-
-        if let profile = store.profile {
-          Section("Power-ups inventory") {
-            ForEach(PowerUpID.allCases) { id in
-              HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                  HStack {
-                    Text(id.title)
-                    Spacer()
-                    Text(id.rarity.title)
-                      .font(.footnote)
-                      .foregroundStyle(.secondary)
-                  }
-                  Text(id.description)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+          DSSectionHeaderRow(title: "Fitness tracker", systemImage: "checkmark.shield")
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Toggle("Fitness tracker", isOn: Binding(
+              get: { store.profile?.hasFitnessTracker ?? false },
+              set: { newValue in
+                store.profile?.hasFitnessTracker = newValue
+                store.profile?.updatedAt = Date()
+                store.saveAll()
+                if let p = store.profile, Backend.shared.isAvailable {
+                  Task { try? await Backend.shared.upsertMyProfile(p) }
                 }
-                Text("×\(profile.inventory.count(of: id))")
-                  .font(.headline)
-                  .monospacedDigit()
               }
-              .padding(.vertical, 2)
-            }
-
-            Button("Grant demo power-ups") {
-              InventoryService(store: store).grantDemoPack()
-            }
+            ))
+            Text("Used for fair matchmaking in games that require/avoid tracker users.")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
           }
-        }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
+          .opacity(store.profile == nil ? 0.55 : 1)
+          .disabled(store.profile == nil)
 
-        Section {
-          Button("Sign out", role: .destructive) {
-            store.signOut()
+          DSSectionHeaderRow(title: "Measurements", systemImage: "ruler")
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Text("Measurement system")
+              .font(DS.Typography.section)
+            Picker("Measurement system", selection: $store.measurementSystem) {
+              ForEach(MeasurementSystem.allCases) { m in
+                Text(m.title).tag(m)
+              }
+            }
+            .pickerStyle(.segmented)
+            .tint(DS.Palette.accent)
+            .onChange(of: store.measurementSystem) { _, _ in store.saveAll() }
+            Text("Used for displaying distances and other units (metric vs imperial).")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
           }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
+
+          DSSectionHeaderRow(title: "Games", systemImage: "gamecontroller")
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Text("Hidden games")
+              .font(DS.Typography.section)
+            Text("Leaving a lobby hides it from your lists so it doesn’t come back after a refresh.")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+            Button {
+              store.hiddenPublicGameIDs = []
+              store.saveAll()
+              Task { await BackendSyncService(store: store).syncAll() }
+            } label: {
+              Text("Reset hidden games")
+                .font(DS.Typography.body.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, DS.Spacing.s)
+            }
+            .buttonStyle(.bordered)
+          }
+          .dsCard()
+          .padding(.horizontal, DS.Spacing.xl)
+
+          Spacer(minLength: DS.Spacing.xxl)
         }
+        .padding(.bottom, DS.Spacing.xxl)
       }
-      .navigationTitle("Settings")
+      .dsScreenBackground()
+      .refreshable {
+        await BackendSyncService(store: store).syncAll()
+      }
     }
   }
 }

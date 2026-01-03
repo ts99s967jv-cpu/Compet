@@ -2,10 +2,12 @@ import SwiftUI
 
 struct HabitsView: View {
   @Bindable var store: AppStore
+  @Environment(\.colorScheme) private var scheme
 
   @State private var showAdd: Bool = false
   @State private var logHabit: Habit?
   @State private var editHabit: Habit?
+  @State private var showArchived: Bool = false
 
   private let columns = [
     GridItem(.flexible(), spacing: DS.Spacing.m),
@@ -53,7 +55,46 @@ struct HabitsView: View {
         }
         .padding(.horizontal, DS.Spacing.xl)
         .padding(.top, DS.Spacing.l)
-        .padding(.bottom, DS.Spacing.xxl)
+
+        if !store.archivedHabits.isEmpty {
+          VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            Button {
+              withAnimation(.easeInOut(duration: 0.2)) { showArchived.toggle() }
+            } label: {
+              HStack {
+                Text("Archived")
+                  .font(DS.Typography.section)
+                  .foregroundStyle(DS.Palette.text(scheme))
+                Spacer()
+                Image(systemName: showArchived ? "chevron.up" : "chevron.down")
+                  .foregroundStyle(DS.Palette.subtext(scheme))
+              }
+              .padding(.horizontal, DS.Spacing.xl)
+              .padding(.top, DS.Spacing.m)
+            }
+            .buttonStyle(.plain)
+
+            if showArchived {
+              LazyVGrid(columns: columns, spacing: DS.Spacing.m) {
+                ForEach(store.archivedHabits) { habit in
+                  HabitGridCard(store: store, habit: habit)
+                    .opacity(0.65)
+                    .contextMenu {
+                      Button {
+                        store.setHabitActive(habit.id, isActive: true)
+                      } label: {
+                        Label("Unarchive", systemImage: "arrow.uturn.backward")
+                      }
+                    }
+                }
+              }
+              .padding(.horizontal, DS.Spacing.xl)
+              .padding(.top, DS.Spacing.s)
+            }
+          }
+        }
+
+        Spacer(minLength: DS.Spacing.xxl)
       }
       .dsScreenBackground()
       .navigationTitle("Habits")

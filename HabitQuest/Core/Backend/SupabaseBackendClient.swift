@@ -83,7 +83,8 @@ final class SupabaseBackendClient: BackendClient {
   }
 
   func searchUsers(query: String) async throws -> [PublicUser] {
-    let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    var q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    if q.hasPrefix("@") { q.removeFirst() }
     guard !q.isEmpty else { return [] }
     struct PublicRow: Codable { var id: UUID; var display_name: String; var handle: String; var visibility: String }
     let rows: [PublicRow] = try await client
@@ -196,42 +197,131 @@ final class SupabaseBackendClient: BackendClient {
   }
 
   func listPublicGames() async throws -> [PublicGame] {
+    // Robust base-table implementation (does not require `public_games_view`).
+    let me = client.auth.currentUser?.id
+
     struct GameRow: Codable {
       var id: UUID
       var title: String
       var created_at: Date
+      var created_by: UUID
       var visibility: String
       var is_pinned: Bool
       var is_unlimited_players: Bool
       var status: String
       var max_players: Int
       var settings: GameSettings
-      var created_by_profile: ProfilePublicRow
-      var players: [PlayerRow]
     }
-    struct PlayerRow: Codable { var user_id: UUID; var joined_at: Date; var profile: ProfilePublicRow }
+    struct PlayerRow: Codable {
+      var game_id: UUID
+      var user_id: UUID
+      var joined_at: Date
+    }
 
-    let rows: [GameRow] = try await client
-      .from("public_games_view")
+    let browseRows: [GameRow] = try await client
+      .from("public_games")
       .select()
+      .or("visibility.eq.public,visibility.eq.systemEvent")
       .order("created_at", ascending: false)
+      .limit(200)
       .execute()
       .value
+
+    var myRows: [GameRow] = []
+    var myMembershipPlayerRows: [PlayerRow] = []
+    if let me {
+      struct MembershipRow: Codable {
+        var game_id: UUID
+        var user_id: UUID
+        var joined_at: Date
+      }
+      let memberships: [MembershipRow] = (try? await client
+        .from("public_game_players")
+        .select("game_id,user_id,joined_at")
+        .eq("user_id", value: me.uuidString)
+        .execute()
+        .value) ?? []
+
+      let myIDs = Set(memberships.map { $0.game_id.uuidString })
+      // Ensure we always model "my membership" locally, even if RLS blocks fetching all players.
+      myMembershipPlayerRows = memberships.map { PlayerRow(game_id: $0.game_id, user_id: $0.user_id, joined_at: $0.joined_at) }
+      let myOr = ([ "created_by.eq.\(me.uuidString)" ] + myIDs.map { "id.eq.\($0)" }).joined(separator: ",")
+      myRows = (try? await client
+        .from("public_games")
+        .select()
+        .or(myOr)
+        .execute()
+        .value) ?? []
+    }
+
+    var byID: [String: GameRow] = [:]
+    for r in (browseRows + myRows) { byID[r.id.uuidString] = r }
+    let rows = byID.values.sorted { $0.created_at > $1.created_at }
+    let gameIDs = rows.map { $0.id.uuidString }
+
+    var playerRows: [PlayerRow] = []
+    if !gameIDs.isEmpty {
+      let cond = gameIDs.map { "game_id.eq.\($0)" }.joined(separator: ",")
+      playerRows = (try? await client
+        .from("public_game_players")
+        .select("game_id,user_id,joined_at")
+        .or(cond)
+        .execute()
+        .value) ?? []
+    }
+    if !myMembershipPlayerRows.isEmpty {
+      let existing = Set(playerRows.map { "\($0.game_id.uuidString)|\($0.user_id.uuidString)" })
+      for pr in myMembershipPlayerRows {
+        let key = "\(pr.game_id.uuidString)|\(pr.user_id.uuidString)"
+        if !existing.contains(key) {
+          playerRows.append(pr)
+        }
+      }
+    }
+
+    let creatorIDs = Set(rows.map { $0.created_by.uuidString })
+    let playerIDs = Set(playerRows.map { $0.user_id.uuidString })
+    let profileIDs = Array(creatorIDs.union(playerIDs))
+
+    var profilesByID: [String: ProfilePublicRow] = [:]
+    if !profileIDs.isEmpty {
+      let cond = profileIDs.map { "id.eq.\($0)" }.joined(separator: ",")
+      let profileRows: [ProfilePublicRow] = (try? await client
+        .from("profiles")
+        .select("id,display_name,handle,visibility")
+        .or(cond)
+        .execute()
+        .value) ?? []
+      profilesByID = Dictionary(uniqueKeysWithValues: profileRows.map { ($0.id.uuidString, $0) })
+    }
+
+    let playersByGameID: [String: [PlayerRow]] = Dictionary(grouping: playerRows, by: { $0.game_id.uuidString })
+
+    func mapUser(_ id: String) -> PublicUser {
+      if let p = profilesByID[id] {
+        return PublicUser(id: p.id.uuidString, displayName: p.display_name, handle: p.handle, visibility: ProfileVisibility(rawValue: p.visibility) ?? .public)
+      }
+      return PublicUser(id: id, displayName: "Unknown", handle: "", visibility: .public)
+    }
+
     return rows.map { r in
-      PublicGame(
-        id: r.id.uuidString,
+      let gid = r.id.uuidString
+      let createdBy = mapUser(r.created_by.uuidString)
+      let ps = (playersByGameID[gid] ?? []).sorted { $0.joined_at < $1.joined_at }.map { pr in
+        PublicGamePlayer(user: mapUser(pr.user_id.uuidString), joinedAt: pr.joined_at)
+      }
+      return PublicGame(
+        id: gid,
         title: r.title,
         createdAt: r.created_at,
-        createdBy: PublicUser(id: r.created_by_profile.id.uuidString, displayName: r.created_by_profile.display_name, handle: r.created_by_profile.handle, visibility: ProfileVisibility(rawValue: r.created_by_profile.visibility) ?? .public),
+        createdBy: createdBy,
         visibility: PublicGameVisibility(rawValue: r.visibility) ?? .public,
         isPinned: r.is_pinned,
         isUnlimitedPlayers: r.is_unlimited_players,
         settings: r.settings,
         status: PublicGameStatus(rawValue: r.status) ?? .open,
         maxPlayers: r.max_players,
-        players: r.players.map { p in
-          PublicGamePlayer(user: PublicUser(id: p.profile.id.uuidString, displayName: p.profile.display_name, handle: p.profile.handle, visibility: ProfileVisibility(rawValue: p.profile.visibility) ?? .public), joinedAt: p.joined_at)
-        }
+        players: ps
       )
     }
   }
@@ -286,6 +376,27 @@ final class SupabaseBackendClient: BackendClient {
       .execute()
   }
 
+  func closePublicGame(gameID: String) async throws {
+    _ = try await client
+      .from("public_games")
+      .update(["status": "finished"])
+      .eq("id", value: gameID)
+      .execute()
+  }
+
+  func deletePublicGame(gameID: String) async throws {
+    _ = try await client
+      .from("public_game_players")
+      .delete()
+      .eq("game_id", value: gameID)
+      .execute()
+    _ = try await client
+      .from("public_games")
+      .delete()
+      .eq("id", value: gameID)
+      .execute()
+  }
+
   private func mapProfile(_ row: ProfileRow) -> UserProfile {
     let quantities: [PowerUpID: Int] = row.inventory.reduce(into: [:]) { acc, kv in
       let (key, value) = kv
@@ -301,7 +412,7 @@ final class SupabaseBackendClient: BackendClient {
       fitnessLevel: FitnessLevel(rawValue: row.fitness_level) ?? .beginner,
       visibility: ProfileVisibility(rawValue: row.visibility) ?? .public,
       hasFitnessTracker: row.has_fitness_tracker,
-      fitnessElo: row.fitness_elo,
+      fitnessElo: row.fitness_elo ?? Int(FitnessRatingConstants.defaultCohortMeanElo),
       fitnessEloUpdatedAt: row.fitness_elo_updated_at,
       inventory: UserInventory(quantities: quantities),
       createdAt: row.created_at,

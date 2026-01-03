@@ -10,8 +10,6 @@ protocol BackendClient {
 
   func signUp(email: String, password: String) async throws -> String
   func signIn(email: String, password: String) async throws -> String
-  func sendMagicLink(email: String, redirectTo: URL) async throws
-  func handleAuthCallback(url: URL) async throws -> String
   func signOut() async
 
   // MARK: Profile
@@ -34,5 +32,7 @@ protocol BackendClient {
   func joinPublicGame(gameID: String) async throws
   func leavePublicGame(gameID: String) async throws
   func startPublicGameNow(gameID: String) async throws
+  func closePublicGame(gameID: String) async throws
+  func deletePublicGame(gameID: String) async throws
 }
 

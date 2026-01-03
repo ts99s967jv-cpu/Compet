@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct FriendsView: View {
+  @Environment(\.dismiss) private var dismiss
   @Bindable var store: AppStore
   @Environment(\.colorScheme) private var scheme
 
@@ -8,6 +9,7 @@ struct FriendsView: View {
   @State private var searchResults: [PublicUser] = []
   @State private var inviteFriend: PublicUser?
   @State private var viewUser: PublicUser?
+  @State private var statusMessage: String?
 
   private let directory = UserDirectoryService()
 
@@ -20,10 +22,17 @@ struct FriendsView: View {
             .padding(.horizontal, DS.Spacing.xl)
             .padding(.top, DS.Spacing.l)
 
-          Text("Search people, view profiles, add friends, and invite them to games.")
+          Text("Search people, manage your friendships, and invite friends to games.")
             .font(DS.Typography.body)
             .foregroundStyle(DS.Palette.subtext(scheme))
             .padding(.horizontal, DS.Spacing.xl)
+
+          if let statusMessage {
+            Text(statusMessage)
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .padding(.horizontal, DS.Spacing.xl)
+          }
 
           if !searchResults.isEmpty {
             DSSectionHeaderRow(title: "Search results", systemImage: "magnifyingglass")
@@ -33,8 +42,9 @@ struct FriendsView: View {
                   user: user,
                   isFriend: store.friends.contains(where: { $0.user.id == user.id }),
                   view: { viewUser = user },
-                  add: { FriendsService(store: store).addFriend(user) },
-                  invite: { inviteFriend = user }
+                  add: { FriendsService(store: store).addFriend(user); statusMessage = "Friend added (local)." },
+                  invite: { inviteFriend = user },
+                  remove: nil
                 )
                 if user.id != searchResults.last?.id {
                   Divider().overlay(DS.Palette.separator(scheme))
@@ -73,7 +83,8 @@ struct FriendsView: View {
                   isFriend: true,
                   view: { viewUser = friend.user },
                   add: {},
-                  invite: { inviteFriend = friend.user }
+                  invite: { inviteFriend = friend.user },
+                  remove: { FriendsService(store: store).removeFriend(userID: friend.user.id); statusMessage = "Friend removed (local)." }
                 )
                 if friend.id != store.friends.last?.id {
                   Divider().overlay(DS.Palette.separator(scheme))
@@ -91,13 +102,22 @@ struct FriendsView: View {
       .dsScreenBackground()
       .searchable(text: $searchQuery, prompt: "Search by name or handle")
       .onChange(of: searchQuery) { _, newValue in
-        searchResults = directory.search(query: newValue, excluding: store.profile?.id)
+        var q = newValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if q.hasPrefix("@") { q.removeFirst() }
+        searchResults = directory.search(query: q, excluding: store.profile?.id)
       }
       .sheet(item: $inviteFriend) { friend in
         InviteToGameSheet(store: store, friend: friend)
       }
       .sheet(item: $viewUser) { user in
         PublicUserProfileSheet(store: store, user: user)
+      }
+      .presentationDragIndicator(.visible)
+      .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button("Close") { dismiss() }
+            .foregroundStyle(DS.Palette.subtext(scheme))
+        }
       }
     }
   }
@@ -110,6 +130,7 @@ private struct FriendRow: View {
   let view: () -> Void
   let add: () -> Void
   let invite: () -> Void
+  let remove: (() -> Void)?
 
   var body: some View {
     HStack(spacing: 12) {
@@ -141,8 +162,14 @@ private struct FriendRow: View {
       .buttonStyle(.plain)
 
       if isFriend {
-        Button("Invite") { invite() }
-          .buttonStyle(.bordered)
+        HStack(spacing: 8) {
+          Button("Invite") { invite() }
+            .buttonStyle(.bordered)
+          if let remove {
+            Button("Remove", role: .destructive) { remove() }
+              .buttonStyle(.bordered)
+          }
+        }
       } else {
         HStack(spacing: 8) {
           Button("Invite") { invite() }

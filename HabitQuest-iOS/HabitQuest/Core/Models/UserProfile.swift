@@ -16,8 +16,8 @@ struct UserProfile: Codable, Equatable, Identifiable {
   /// Used for fairness matchmaking rules.
   var hasFitnessTracker: Bool
 
-  /// Fitness ELO (0-3000). Only computed for tracker users.
-  var fitnessElo: Int?
+  /// v2 Fitness Elo (no max cap). Always present (cold-start safe).
+  var fitnessElo: Int
   var fitnessEloUpdatedAt: Date?
 
   /// Earned power-ups/debuffs (inventory).
@@ -52,7 +52,7 @@ extension UserProfile {
 
     hasFitnessTracker = (try? c.decode(Bool.self, forKey: .hasFitnessTracker)) ?? false
 
-    fitnessElo = try? c.decodeIfPresent(Int.self, forKey: .fitnessElo)
+    fitnessElo = (try? c.decodeIfPresent(Int.self, forKey: .fitnessElo)) ?? Int(FitnessRatingConstants.defaultCohortMeanElo)
     fitnessEloUpdatedAt = try? c.decodeIfPresent(Date.self, forKey: .fitnessEloUpdatedAt)
 
     inventory = (try? c.decode(UserInventory.self, forKey: .inventory)) ?? .empty

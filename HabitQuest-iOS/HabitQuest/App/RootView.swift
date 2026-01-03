@@ -2,7 +2,6 @@ import SwiftUI
 
 struct RootView: View {
   @Bindable var store: AppStore
-  @State private var didSyncOnce: Bool = false
 
   private var preferredScheme: ColorScheme? {
     switch store.theme {
@@ -21,10 +20,22 @@ struct RootView: View {
       }
     }
     .preferredColorScheme(preferredScheme)
-    .task {
-      guard !didSyncOnce else { return }
-      didSyncOnce = true
+    // Sync whenever the signed-in account changes (incl. sign-in after sign-out).
+    .task(id: store.account?.userID) {
+      guard store.isSignedIn else { return }
       await BackendSyncService(store: store).syncAll()
+      // Request HealthKit permissions up-front once (avoids tab-by-tab prompts).
+      if !store.didRequestHealthKitAuthorization {
+        do {
+          try await HealthKitAuthorizationService().requestAllAuthorization()
+          store.didRequestHealthKitAuthorization = true
+          store.saveAll()
+        } catch {
+          // Don't block app usage; user may deny permissions.
+        }
+      }
+      // Request Notifications permission once (optional; enables device alerts for inbox items).
+      await LocalNotificationService.shared.requestAuthorizationIfNeeded(store: store)
     }
   }
 }

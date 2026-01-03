@@ -20,6 +20,10 @@ struct RootView: View {
       }
     }
     .preferredColorScheme(preferredScheme)
+    .task(id: store.account?.userID) {
+      guard store.isSignedIn else { return }
+      await BackendSyncService(store: store).syncAll()
+    }
   }
 }
 

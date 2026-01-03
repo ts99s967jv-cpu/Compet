@@ -73,6 +73,42 @@ struct GameMapTrackCard: View {
   }
 }
 
+/// Large, interactive map display (drag to pan up/down the track).
+struct GameMapExplorerCard: View {
+  @Environment(\.colorScheme) private var scheme
+
+  let title: String
+  let subtitle: String
+  let style: GameMapStyle
+  let checkpoints: [GameCheckpoint]
+  let players: [GameMapPlayer]
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: DS.Spacing.s) {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title)
+          .font(DS.Typography.title)
+        Text(subtitle)
+          .font(DS.Typography.body)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+      }
+
+      InteractiveGameMapTrack(
+        style: style,
+        checkpoints: checkpoints,
+        players: players
+      )
+      .frame(height: 640)
+      .clipShape(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous))
+      .overlay(
+        RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous)
+          .stroke(DS.Palette.separator(scheme).opacity(0.45), lineWidth: 1)
+      )
+    }
+    .dsCard()
+  }
+}
+
 struct GameCheckpoint: Identifiable, Hashable {
   let id: String
   let progress: Double // 0...1 along the path
@@ -98,13 +134,19 @@ private struct GameMapTrack: View {
       let rect = geo.frame(in: .local)
       let resolved = style
       let path = pathPolyline(in: rect, style: resolved)
+      let trackPath = smoothedPath(from: path)
+      let leaderT = players.map(\.progress).max() ?? 0
 
       ZStack {
         background(for: resolved)
 
         Canvas { ctx, size in
           // Track
-          drawTrack(in: &ctx, size: size, style: resolved, polyline: path)
+          drawTrack(in: &ctx, size: size, style: resolved, path: trackPath)
+          // Start line (distance = 0)
+          drawStartLine(in: &ctx, polyline: path)
+          // Future buffer (space beyond current leader)
+          drawFutureBuffer(in: &ctx, polyline: path, fromT: leaderT, style: resolved)
           // Checkpoints
           for cp in checkpoints {
             let p = pointOnPolyline(path, t: cp.progress)
@@ -132,8 +174,9 @@ private struct GameMapTrack: View {
         }
 
         // Player bubbles
+        let positions = layoutPlayerBubblePositions(polyline: path, players: players, width: rect.width, height: rect.height)
         ForEach(players) { pl in
-          let p = pointOnPolyline(path, t: pl.progress)
+          let p = positions[pl.id] ?? pointOnPolyline(path, t: pl.progress)
           PlayerBubble(name: pl.displayName, isMe: pl.isMe)
             .position(x: clamp(p.x, 22, rect.width - 22), y: clamp(p.y, 18, rect.height - 18))
         }
@@ -205,54 +248,50 @@ private struct GameMapTrack: View {
         CGPoint(x: rect.midX, y: minY),
       ]
     case .road:
-      // Long sweeping road.
-      return [
-        CGPoint(x: minX, y: maxY - 10),
-        CGPoint(x: maxX - 10, y: maxY * 0.70),
-        CGPoint(x: minX + 25, y: maxY * 0.42),
-        CGPoint(x: maxX, y: minY + 12),
-      ]
+      // Smooth S-curve road.
+      return meanderingPath(
+        fromY: maxY,
+        toY: minY,
+        midX: rect.midX,
+        amplitude: (maxX - minX) * 0.33,
+        segments: 9
+      )
     case .grassyTrail:
-      // Zigzag trail.
-      return [
-        CGPoint(x: minX, y: maxY),
-        CGPoint(x: maxX, y: maxY * 0.80),
-        CGPoint(x: minX + 16, y: maxY * 0.62),
-        CGPoint(x: maxX - 18, y: maxY * 0.42),
-        CGPoint(x: minX + 8, y: maxY * 0.24),
-        CGPoint(x: maxX, y: minY),
-      ]
+      // Organic trail with softer bends.
+      return meanderingPath(
+        fromY: maxY,
+        toY: minY,
+        midX: rect.midX,
+        amplitude: (maxX - minX) * 0.28,
+        segments: 11
+      )
     case .generic, .automatic:
-      return [
-        CGPoint(x: minX, y: maxY),
-        CGPoint(x: maxX * 0.84, y: maxY * 0.72),
-        CGPoint(x: minX + 14, y: maxY * 0.48),
-        CGPoint(x: maxX, y: minY),
-      ]
+      return meanderingPath(
+        fromY: maxY,
+        toY: minY,
+        midX: rect.midX,
+        amplitude: (maxX - minX) * 0.22,
+        segments: 7
+      )
     }
   }
 
-  private func drawTrack(in ctx: inout GraphicsContext, size: CGSize, style: GameMapStyle, polyline: [CGPoint]) {
-    guard polyline.count >= 2 else { return }
-    var p = Path()
-    p.move(to: polyline[0])
-    for pt in polyline.dropFirst() { p.addLine(to: pt) }
-
+  private func drawTrack(in ctx: inout GraphicsContext, size: CGSize, style: GameMapStyle, path: Path) {
     switch style {
     case .grassyTrail:
-      ctx.stroke(p, with: .color(Color(red: 0.92, green: 0.90, blue: 0.84).opacity(scheme == .dark ? 0.50 : 0.95)), style: StrokeStyle(lineWidth: 18, lineCap: .round, lineJoin: .round))
-      ctx.stroke(p, with: .color(DS.Palette.separator(scheme).opacity(0.25)), style: StrokeStyle(lineWidth: 20, lineCap: .round, lineJoin: .round))
+      ctx.stroke(path, with: .color(Color(red: 0.92, green: 0.90, blue: 0.84).opacity(scheme == .dark ? 0.50 : 0.95)), style: StrokeStyle(lineWidth: 18, lineCap: .round, lineJoin: .round))
+      ctx.stroke(path, with: .color(DS.Palette.separator(scheme).opacity(0.25)), style: StrokeStyle(lineWidth: 20, lineCap: .round, lineJoin: .round))
     case .road:
       let road = Color(red: 0.40, green: 0.42, blue: 0.46).opacity(scheme == .dark ? 0.55 : 0.40)
-      ctx.stroke(p, with: .color(road), style: StrokeStyle(lineWidth: 20, lineCap: .round, lineJoin: .round))
+      ctx.stroke(path, with: .color(road), style: StrokeStyle(lineWidth: 20, lineCap: .round, lineJoin: .round))
       // Center dashed line.
-      ctx.stroke(p, with: .color(Color.white.opacity(scheme == .dark ? 0.45 : 0.70)), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [10, 10]))
+      ctx.stroke(path, with: .color(Color.white.opacity(scheme == .dark ? 0.45 : 0.70)), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [10, 10]))
     case .pool:
       let lane = Color(red: 0.16, green: 0.56, blue: 0.86).opacity(scheme == .dark ? 0.55 : 0.40)
-      ctx.stroke(p, with: .color(lane), style: StrokeStyle(lineWidth: 26, lineCap: .round))
-      ctx.stroke(p, with: .color(Color.white.opacity(scheme == .dark ? 0.35 : 0.55)), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 8]))
+      ctx.stroke(path, with: .color(lane), style: StrokeStyle(lineWidth: 26, lineCap: .round))
+      ctx.stroke(path, with: .color(Color.white.opacity(scheme == .dark ? 0.35 : 0.55)), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 8]))
     case .generic, .automatic:
-      ctx.stroke(p, with: .color(DS.Palette.separator(scheme).opacity(0.70)), style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [4, 8]))
+      ctx.stroke(path, with: .color(DS.Palette.separator(scheme).opacity(0.70)), style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [4, 8]))
     }
   }
 
@@ -260,6 +299,389 @@ private struct GameMapTrack: View {
     let ring = Path(ellipseIn: CGRect(x: point.x - 7, y: point.y - 7, width: 14, height: 14))
     ctx.fill(ring, with: .color(DS.Palette.surface(scheme).opacity(0.96)))
     ctx.stroke(ring, with: .color(DS.Palette.accent.opacity(0.65)), lineWidth: 2)
+  }
+
+  private func drawStartLine(in ctx: inout GraphicsContext, polyline: [CGPoint]) {
+    guard polyline.count >= 2 else { return }
+    let p0 = polyline[0]
+    let p1 = polyline[1]
+    let dx = p1.x - p0.x
+    let dy = p1.y - p0.y
+    let len = max(0.0001, hypot(dx, dy))
+    let nx = -dy / len
+    let ny = dx / len
+
+    let half: CGFloat = 68
+    let a = CGPoint(x: p0.x - nx * half, y: p0.y - ny * half)
+    let b = CGPoint(x: p0.x + nx * half, y: p0.y + ny * half)
+
+    var stripe = Path()
+    stripe.move(to: a)
+    stripe.addLine(to: b)
+
+    ctx.stroke(stripe, with: .color(DS.Palette.surface(scheme).opacity(0.95)), style: StrokeStyle(lineWidth: 10, lineCap: .round))
+    let accent = DS.Palette.accent.opacity(scheme == .dark ? 0.85 : 0.70)
+    ctx.stroke(stripe, with: .color(accent), style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [6, 6]))
+    let dot = Path(ellipseIn: CGRect(x: p0.x - 6, y: p0.y - 6, width: 12, height: 12))
+    ctx.fill(dot, with: .color(DS.Palette.accent.opacity(0.85)))
+  }
+
+  private func drawFutureBuffer(in ctx: inout GraphicsContext, polyline: [CGPoint], fromT: Double, style: GameMapStyle) {
+    let t0 = min(0.995, max(0.0, fromT))
+    let t1 = 1.0
+    guard t1 > t0 + 0.001 else { return }
+    let seg = sampledPolyline(polyline, t0: t0, t1: t1, samples: 18)
+    guard seg.count >= 2 else { return }
+    var p = Path()
+    p.move(to: seg[0])
+    for pt in seg.dropFirst() { p.addLine(to: pt) }
+
+    let color: Color
+    switch style {
+    case .road:
+      color = Color.white.opacity(scheme == .dark ? 0.18 : 0.22)
+    case .pool:
+      color = Color.white.opacity(scheme == .dark ? 0.16 : 0.20)
+    default:
+      color = DS.Palette.separator(scheme).opacity(scheme == .dark ? 0.18 : 0.22)
+    }
+    ctx.stroke(p, with: .color(color), style: StrokeStyle(lineWidth: 14, lineCap: .round, dash: [8, 10]))
+  }
+
+  private func smoothedPath(from polyline: [CGPoint]) -> Path {
+    guard polyline.count >= 2 else {
+      var p = Path()
+      if let first = polyline.first { p.move(to: first) }
+      return p
+    }
+    // Quadratic smoothing: creates a continuous, rounded path while keeping endpoints.
+    var path = Path()
+    path.move(to: polyline[0])
+    if polyline.count == 2 {
+      path.addLine(to: polyline[1])
+      return path
+    }
+    for i in 1..<(polyline.count - 1) {
+      let cur = polyline[i]
+      let next = polyline[i + 1]
+      let mid = CGPoint(x: (cur.x + next.x) * 0.5, y: (cur.y + next.y) * 0.5)
+      path.addQuadCurve(to: mid, control: cur)
+    }
+    path.addQuadCurve(to: polyline.last!, control: polyline[polyline.count - 2])
+    return path
+  }
+
+  private func meanderingPath(fromY: CGFloat, toY: CGFloat, midX: CGFloat, amplitude: CGFloat, segments: Int) -> [CGPoint] {
+    let n = max(2, segments)
+    var pts: [CGPoint] = []
+    for i in 0..<n {
+      let t = Double(i) / Double(n - 1) // 0...1
+      let y = fromY + (toY - fromY) * CGFloat(t)
+      // Two sine waves makes it feel more “natural” without randomness.
+      let xOffset = amplitude * CGFloat(sin((t * 2.2 + 0.15) * .pi * 2) * 0.65 + sin((t * 0.9 + 0.35) * .pi * 2) * 0.35)
+      pts.append(CGPoint(x: midX + xOffset, y: y))
+    }
+    return pts
+  }
+}
+
+private struct InteractiveGameMapTrack: View {
+  @Environment(\.colorScheme) private var scheme
+
+  let style: GameMapStyle
+  let checkpoints: [GameCheckpoint]
+  let players: [GameMapPlayer]
+
+  @State private var panY: CGFloat = 0
+  @State private var panYStart: CGFloat = 0
+  @State private var didAutoCenter: Bool = false
+
+  var body: some View {
+    GeometryReader { geo in
+      let visibleRect = geo.frame(in: .local)
+      let resolved = style
+
+      // Create a tall canvas so we can pan vertically along the road.
+      let contentRect = CGRect(x: 0, y: 0, width: visibleRect.width, height: max(1200, visibleRect.height * 2.6))
+      let polyline = pathPolyline(in: contentRect, style: resolved)
+      let trackPath = smoothedPath(from: polyline)
+      let leaderT = players.map(\.progress).max() ?? 0
+
+      ZStack {
+        background(for: resolved)
+
+        // Tall map canvas (we pan this inside a clipped viewport).
+        ZStack {
+          Canvas { ctx, _ in
+            drawTrack(in: &ctx, size: contentRect.size, style: resolved, path: trackPath)
+            drawStartLine(in: &ctx, polyline: polyline)
+            drawFutureBuffer(in: &ctx, polyline: polyline, fromT: leaderT, style: resolved)
+            for cp in checkpoints {
+              let p = pointOnPolyline(polyline, t: cp.progress)
+              drawCheckpoint(in: &ctx, at: p, style: resolved)
+            }
+          }
+          .frame(width: contentRect.width, height: contentRect.height)
+
+          // Labels & players are regular SwiftUI for crisp text.
+          ForEach(checkpoints) { cp in
+            let p = pointOnPolyline(polyline, t: cp.progress)
+            Text(cp.label)
+              .font(DS.Typography.caption.weight(.semibold))
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .padding(.horizontal, 8)
+              .padding(.vertical, 5)
+              .background(
+                Capsule(style: .continuous)
+                  .fill(DS.Palette.surface(scheme).opacity(0.92))
+              )
+              .overlay(
+                Capsule(style: .continuous)
+                  .stroke(DS.Palette.separator(scheme).opacity(0.55), lineWidth: 1)
+              )
+              .position(
+                x: clamp(p.x + 42, 18, contentRect.width - 18),
+                y: clamp(p.y - 18, 18, contentRect.height - 18)
+              )
+          }
+
+          let positions = layoutPlayerBubblePositions(polyline: polyline, players: players, width: contentRect.width, height: contentRect.height)
+          ForEach(players) { pl in
+            let p = positions[pl.id] ?? pointOnPolyline(polyline, t: pl.progress)
+            PlayerBubble(name: pl.displayName, isMe: pl.isMe)
+              .position(
+                x: clamp(p.x, 22, contentRect.width - 22),
+                y: clamp(p.y, 18, contentRect.height - 18)
+              )
+          }
+        }
+        .offset(y: panY)
+        .clipped()
+
+        // Hint overlay
+        VStack {
+          HStack {
+            Text("Drag to explore")
+              .font(DS.Typography.caption.weight(.semibold))
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .padding(.horizontal, 10)
+              .padding(.vertical, 6)
+              .background(Capsule(style: .continuous).fill(DS.Palette.surface(scheme).opacity(0.90)))
+              .overlay(Capsule(style: .continuous).stroke(DS.Palette.separator(scheme).opacity(0.45), lineWidth: 1))
+            Spacer()
+          }
+          .padding(.horizontal, 14)
+          .padding(.top, 12)
+          Spacer()
+        }
+        .allowsHitTesting(false)
+      }
+      .contentShape(Rectangle())
+      .highPriorityGesture(
+        DragGesture(minimumDistance: 2)
+          .onChanged { v in
+            let proposed = panYStart + v.translation.height
+            panY = clampedPanOffset(proposed, visibleHeight: visibleRect.height, contentHeight: contentRect.height)
+          }
+          .onEnded { _ in
+            panYStart = panY
+          }
+      )
+      .onAppear {
+        // Center on "me" once when the map first appears.
+        guard !didAutoCenter else { return }
+        didAutoCenter = true
+        if let me = players.first(where: { $0.isMe }) {
+          let p = pointOnPolyline(polyline, t: me.progress)
+          let proposed = (visibleRect.height * 0.5) - p.y
+          panY = clampedPanOffset(proposed, visibleHeight: visibleRect.height, contentHeight: contentRect.height)
+          panYStart = panY
+        } else {
+          // Default: start near the bottom.
+          panY = clampedPanOffset(visibleRect.height - contentRect.height, visibleHeight: visibleRect.height, contentHeight: contentRect.height)
+          panYStart = panY
+        }
+      }
+    }
+  }
+
+  // MARK: - Shared helpers (copied from GameMapTrack)
+
+  private func background(for style: GameMapStyle) -> some View {
+    switch style {
+    case .grassyTrail:
+      return AnyView(
+        LinearGradient(
+          colors: [
+            DS.Palette.accent.opacity(scheme == .dark ? 0.18 : 0.12),
+            DS.Palette.surface(scheme).opacity(0.92),
+          ],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+    case .road:
+      return AnyView(
+        LinearGradient(
+          colors: [
+            DS.Palette.surface(scheme),
+            DS.Palette.surface(scheme).opacity(0.80),
+          ],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+    case .pool:
+      return AnyView(
+        LinearGradient(
+          colors: [
+            Color(red: 0.20, green: 0.62, blue: 0.92).opacity(scheme == .dark ? 0.25 : 0.18),
+            DS.Palette.surface(scheme).opacity(0.90),
+          ],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+    case .generic, .automatic:
+      return AnyView(
+        LinearGradient(
+          colors: [
+            DS.Palette.surface(scheme),
+            DS.Palette.surface(scheme).opacity(0.86),
+          ],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+    }
+  }
+
+  private func pathPolyline(in rect: CGRect, style: GameMapStyle) -> [CGPoint] {
+    let pad: CGFloat = 18
+    let minX = rect.minX + pad
+    let maxX = rect.maxX - pad
+    let minY = rect.minY + pad
+    let maxY = rect.maxY - pad
+
+    switch style {
+    case .pool:
+      return [CGPoint(x: rect.midX, y: maxY), CGPoint(x: rect.midX, y: minY)]
+    case .road:
+      return meanderingPath(fromY: maxY, toY: minY, midX: rect.midX, amplitude: (maxX - minX) * 0.33, segments: 13)
+    case .grassyTrail:
+      return meanderingPath(fromY: maxY, toY: minY, midX: rect.midX, amplitude: (maxX - minX) * 0.28, segments: 15)
+    case .generic, .automatic:
+      return meanderingPath(fromY: maxY, toY: minY, midX: rect.midX, amplitude: (maxX - minX) * 0.22, segments: 11)
+    }
+  }
+
+  private func smoothedPath(from polyline: [CGPoint]) -> Path {
+    guard polyline.count >= 2 else {
+      var p = Path()
+      if let first = polyline.first { p.move(to: first) }
+      return p
+    }
+    var path = Path()
+    path.move(to: polyline[0])
+    if polyline.count == 2 {
+      path.addLine(to: polyline[1])
+      return path
+    }
+    for i in 1..<(polyline.count - 1) {
+      let cur = polyline[i]
+      let next = polyline[i + 1]
+      let mid = CGPoint(x: (cur.x + next.x) * 0.5, y: (cur.y + next.y) * 0.5)
+      path.addQuadCurve(to: mid, control: cur)
+    }
+    path.addQuadCurve(to: polyline.last!, control: polyline[polyline.count - 2])
+    return path
+  }
+
+  private func drawTrack(in ctx: inout GraphicsContext, size: CGSize, style: GameMapStyle, path: Path) {
+    switch style {
+    case .grassyTrail:
+      ctx.stroke(path, with: .color(Color(red: 0.92, green: 0.90, blue: 0.84).opacity(scheme == .dark ? 0.50 : 0.95)), style: StrokeStyle(lineWidth: 18, lineCap: .round, lineJoin: .round))
+      ctx.stroke(path, with: .color(DS.Palette.separator(scheme).opacity(0.25)), style: StrokeStyle(lineWidth: 20, lineCap: .round, lineJoin: .round))
+    case .road:
+      let road = Color(red: 0.40, green: 0.42, blue: 0.46).opacity(scheme == .dark ? 0.55 : 0.40)
+      ctx.stroke(path, with: .color(road), style: StrokeStyle(lineWidth: 20, lineCap: .round, lineJoin: .round))
+      ctx.stroke(path, with: .color(Color.white.opacity(scheme == .dark ? 0.45 : 0.70)), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [10, 10]))
+    case .pool:
+      let lane = Color(red: 0.16, green: 0.56, blue: 0.86).opacity(scheme == .dark ? 0.55 : 0.40)
+      ctx.stroke(path, with: .color(lane), style: StrokeStyle(lineWidth: 26, lineCap: .round))
+      ctx.stroke(path, with: .color(Color.white.opacity(scheme == .dark ? 0.35 : 0.55)), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 8]))
+    case .generic, .automatic:
+      ctx.stroke(path, with: .color(DS.Palette.separator(scheme).opacity(0.70)), style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [4, 8]))
+    }
+  }
+
+  private func drawCheckpoint(in ctx: inout GraphicsContext, at point: CGPoint, style: GameMapStyle) {
+    let ring = Path(ellipseIn: CGRect(x: point.x - 7, y: point.y - 7, width: 14, height: 14))
+    ctx.fill(ring, with: .color(DS.Palette.surface(scheme).opacity(0.96)))
+    ctx.stroke(ring, with: .color(DS.Palette.accent.opacity(0.65)), lineWidth: 2)
+  }
+
+  private func clampedPanOffset(_ proposed: CGFloat, visibleHeight: CGFloat, contentHeight: CGFloat) -> CGFloat {
+    let minOffset = min(0, visibleHeight - contentHeight)
+    let maxOffset: CGFloat = 0
+    return clamp(proposed, minOffset, maxOffset)
+  }
+
+  private func drawStartLine(in ctx: inout GraphicsContext, polyline: [CGPoint]) {
+    guard polyline.count >= 2 else { return }
+    let p0 = polyline[0]
+    let p1 = polyline[1]
+    let dx = p1.x - p0.x
+    let dy = p1.y - p0.y
+    let len = max(0.0001, hypot(dx, dy))
+    let nx = -dy / len
+    let ny = dx / len
+
+    let half: CGFloat = 76
+    let a = CGPoint(x: p0.x - nx * half, y: p0.y - ny * half)
+    let b = CGPoint(x: p0.x + nx * half, y: p0.y + ny * half)
+
+    var stripe = Path()
+    stripe.move(to: a)
+    stripe.addLine(to: b)
+
+    ctx.stroke(stripe, with: .color(DS.Palette.surface(scheme).opacity(0.95)), style: StrokeStyle(lineWidth: 12, lineCap: .round))
+    let accent = DS.Palette.accent.opacity(scheme == .dark ? 0.85 : 0.70)
+    ctx.stroke(stripe, with: .color(accent), style: StrokeStyle(lineWidth: 5, lineCap: .round, dash: [7, 6]))
+  }
+
+  private func drawFutureBuffer(in ctx: inout GraphicsContext, polyline: [CGPoint], fromT: Double, style: GameMapStyle) {
+    let t0 = min(0.995, max(0.0, fromT))
+    let t1 = 1.0
+    guard t1 > t0 + 0.001 else { return }
+    let seg = sampledPolyline(polyline, t0: t0, t1: t1, samples: 22)
+    guard seg.count >= 2 else { return }
+    var p = Path()
+    p.move(to: seg[0])
+    for pt in seg.dropFirst() { p.addLine(to: pt) }
+
+    let color: Color
+    switch style {
+    case .road:
+      color = Color.white.opacity(scheme == .dark ? 0.16 : 0.20)
+    case .pool:
+      color = Color.white.opacity(scheme == .dark ? 0.14 : 0.18)
+    default:
+      color = DS.Palette.separator(scheme).opacity(scheme == .dark ? 0.16 : 0.20)
+    }
+    ctx.stroke(p, with: .color(color), style: StrokeStyle(lineWidth: 16, lineCap: .round, dash: [10, 12]))
+  }
+
+  private func meanderingPath(fromY: CGFloat, toY: CGFloat, midX: CGFloat, amplitude: CGFloat, segments: Int) -> [CGPoint] {
+    let n = max(2, segments)
+    var pts: [CGPoint] = []
+    for i in 0..<n {
+      let t = Double(i) / Double(n - 1)
+      let y = fromY + (toY - fromY) * CGFloat(t)
+      let xOffset = amplitude * CGFloat(sin((t * 2.2 + 0.15) * .pi * 2) * 0.65 + sin((t * 0.9 + 0.35) * .pi * 2) * 0.35)
+      pts.append(CGPoint(x: midX + xOffset, y: y))
+    }
+    return pts
   }
 }
 
@@ -451,5 +873,56 @@ private func pointOnPolyline(_ pts: [CGPoint], t: Double) -> CGPoint {
     dist -= len
   }
   return pts.last ?? .zero
+}
+
+private func sampledPolyline(_ pts: [CGPoint], t0: Double, t1: Double, samples: Int) -> [CGPoint] {
+  let n = max(2, samples)
+  var out: [CGPoint] = []
+  for i in 0..<n {
+    let u = Double(i) / Double(n - 1)
+    let t = t0 + (t1 - t0) * u
+    out.append(pointOnPolyline(pts, t: t))
+  }
+  return out
+}
+
+private func layoutPlayerBubblePositions(polyline: [CGPoint], players: [GameMapPlayer], width: CGFloat, height: CGFloat) -> [String: CGPoint] {
+  let minYSpacing: CGFloat = 26
+  var items: [(id: String, y: CGFloat, x: CGFloat)] = players.map { pl in
+    var p = pointOnPolyline(polyline, t: pl.progress)
+    let h = stableHash64(pl.id)
+    let jx = CGFloat(Int(h % 5) - 2) * 6
+    let jy = CGFloat(Int((h / 7) % 5) - 2) * 4
+    p.x = clamp(p.x + jx, 22, width - 22)
+    p.y = clamp(p.y + jy, 18, height - 18)
+    return (pl.id, p.y, p.x)
+  }
+
+  items.sort { lhs, rhs in
+    if lhs.y != rhs.y { return lhs.y < rhs.y }
+    return lhs.id < rhs.id
+  }
+
+  var placed: [String: CGPoint] = [:]
+  var lastY: CGFloat? = nil
+  for it in items {
+    var y = it.y
+    if let lastY, y - lastY < minYSpacing {
+      y = lastY + minYSpacing
+    }
+    y = clamp(y, 18, height - 18)
+    placed[it.id] = CGPoint(x: it.x, y: y)
+    lastY = y
+  }
+  return placed
+}
+
+private func stableHash64(_ s: String) -> UInt64 {
+  var h: UInt64 = 1469598103934665603
+  for b in s.utf8 {
+    h ^= UInt64(b)
+    h &*= 1099511628211
+  }
+  return h
 }
 

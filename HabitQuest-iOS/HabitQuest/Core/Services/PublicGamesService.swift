@@ -48,10 +48,23 @@ final class PublicGamesService {
           try await backend.createPublicGame(game)
           let games = try await backend.listPublicGames()
           await MainActor.run {
-            store.publicGames = games
+            // Avoid wiping the UI to an empty state due to transient list issues.
+            // Only replace if we got results, or if the results include the game we just created.
+            let filtered = games.filter { !store.hiddenPublicGameIDs.contains($0.id) }
+            if !filtered.isEmpty || filtered.contains(where: { $0.id == game.id }) {
+              store.publicGames = filtered
+            } else if !store.publicGames.contains(where: { $0.id == game.id }) {
+              store.addPublicGame(game)
+            }
             store.saveAll()
           }
-        } catch {}
+        } catch {
+          // If backend failed, remove the optimistic local insert so it doesn't "vanish later" on re-login.
+          await MainActor.run {
+            store.publicGames.removeAll { $0.id == game.id }
+            store.saveAll()
+          }
+        }
       }
     }
   }
@@ -76,13 +89,30 @@ final class PublicGamesService {
     }
     store.updatePublicGame(game)
 
-    if backend.isAvailable, game.visibility != .systemEvent {
+    // Persist join for all games (including system events) so membership survives relaunch.
+    if backend.isAvailable {
       Task {
         do {
           try await backend.joinPublicGame(gameID: gameID)
           let games = try await backend.listPublicGames()
           await MainActor.run {
-            store.publicGames = games
+            store.publicGames = games.filter { !store.hiddenPublicGameIDs.contains($0.id) }
+            // If the game is already started, ensure it becomes a running ActiveGame immediately.
+            if let updated = store.publicGames.first(where: { $0.id == gameID }),
+               updated.status == .started,
+               let meID = store.profile?.id,
+               updated.contains(userID: meID)
+            {
+              let ag = ActiveGamesService(store: store)
+              switch updated.settings.winCondition {
+              case .eliminationLastManStanding, .kingOfMonth, .kingOfYear:
+                ag.startEliminationStyleGame(from: updated)
+              case .levelVsLevelGoal:
+                ag.startLevelVsLevelGame(from: updated)
+              case .mostPointsAtEnd:
+                ag.startMostPointsGame(from: updated)
+              }
+            }
             store.saveAll()
           }
         } catch {}
@@ -106,6 +136,8 @@ final class PublicGamesService {
         ActiveGamesService(store: store).startEliminationStyleGame(from: game)
       } else if game.settings.winCondition == .levelVsLevelGoal {
         ActiveGamesService(store: store).startLevelVsLevelGame(from: game)
+      } else if game.settings.winCondition == .mostPointsAtEnd {
+        ActiveGamesService(store: store).startMostPointsGame(from: game)
       }
     }
   }
@@ -115,31 +147,69 @@ final class PublicGamesService {
     guard var game = store.publicGames.first(where: { $0.id == gameID }) else { return }
 
     game.players.removeAll { $0.user.id == me.id }
-    if game.players.isEmpty {
-      store.removePublicGame(gameID: game.id)
-      return
-    }
-    if game.status == .started, game.players.count < game.maxPlayers {
-      game.status = .open
-    }
-    store.updatePublicGame(game)
+    // Leaving should remove the lobby from your UI.
+    store.hidePublicGame(gameID: game.id)
 
-    if backend.isAvailable, game.visibility != .systemEvent {
+    // Persist leave for all games (including system events) so membership survives relaunch.
+    if backend.isAvailable {
       Task {
         do {
           try await backend.leavePublicGame(gameID: gameID)
           let games = try await backend.listPublicGames()
           await MainActor.run {
-            store.publicGames = games
+            store.publicGames = games.filter { !store.hiddenPublicGameIDs.contains($0.id) }
             store.saveAll()
           }
-        } catch {}
+        } catch {
+          // Keep it hidden locally; backend may have rejected the leave due to RLS.
+          await MainActor.run {
+            store.saveAll()
+          }
+        }
       }
     }
 
     // For system events, also remove from the active season game (prototype).
     if game.visibility == .systemEvent {
-      ActiveGamesService(store: store).removePlayerFromActiveGame(activeGameID: "ag_" + game.id, userID: me.id)
+      let activeID = "ag_" + game.id
+      ActiveGamesService(store: store).removePlayerFromActiveGame(activeGameID: activeID, userID: me.id)
+      // Also clear any locally cached leaderboard rows for this event so your score doesn't linger after leaving.
+      store.gameScores.removeAll { $0.activeGameID == activeID && $0.userID == me.id }
+      store.saveAll()
+    }
+  }
+
+  func close(gameID: String) {
+    guard let meID = store.profile?.id else { return }
+    guard let game = store.publicGames.first(where: { $0.id == gameID }) else { return }
+    guard game.createdBy.id == meID else { return }
+    store.hidePublicGame(gameID: gameID)
+    if backend.isAvailable, game.visibility != .systemEvent {
+      Task {
+        try? await backend.closePublicGame(gameID: gameID)
+        let games = (try? await backend.listPublicGames()) ?? []
+        await MainActor.run {
+          store.publicGames = games.filter { !store.hiddenPublicGameIDs.contains($0.id) }
+          store.saveAll()
+        }
+      }
+    }
+  }
+
+  func delete(gameID: String) {
+    guard let meID = store.profile?.id else { return }
+    guard let game = store.publicGames.first(where: { $0.id == gameID }) else { return }
+    guard game.createdBy.id == meID else { return }
+    store.hidePublicGame(gameID: gameID)
+    if backend.isAvailable, game.visibility != .systemEvent {
+      Task {
+        try? await backend.deletePublicGame(gameID: gameID)
+        let games = (try? await backend.listPublicGames()) ?? []
+        await MainActor.run {
+          store.publicGames = games.filter { !store.hiddenPublicGameIDs.contains($0.id) }
+          store.saveAll()
+        }
+      }
     }
   }
 
@@ -162,6 +232,22 @@ final class PublicGamesService {
           let games = try await backend.listPublicGames()
           await MainActor.run {
             store.publicGames = games
+            // Ensure the started game becomes a running ActiveGame immediately.
+            if let updated = store.publicGames.first(where: { $0.id == gameID }),
+               updated.status == .started,
+               let meID = store.profile?.id,
+               updated.contains(userID: meID)
+            {
+              let ag = ActiveGamesService(store: store)
+              switch updated.settings.winCondition {
+              case .eliminationLastManStanding, .kingOfMonth, .kingOfYear:
+                ag.startEliminationStyleGame(from: updated)
+              case .levelVsLevelGoal:
+                ag.startLevelVsLevelGame(from: updated)
+              case .mostPointsAtEnd:
+                ag.startMostPointsGame(from: updated)
+              }
+            }
             store.saveAll()
           }
         } catch {}
@@ -172,6 +258,8 @@ final class PublicGamesService {
       ActiveGamesService(store: store).startEliminationStyleGame(from: game)
     } else if game.settings.winCondition == .levelVsLevelGoal {
       ActiveGamesService(store: store).startLevelVsLevelGame(from: game)
+    } else if game.settings.winCondition == .mostPointsAtEnd {
+      ActiveGamesService(store: store).startMostPointsGame(from: game)
     }
   }
 

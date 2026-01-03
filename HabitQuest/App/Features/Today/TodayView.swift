@@ -71,7 +71,7 @@ struct TodayView: View {
             .dsCard()
           } else {
             ForEach(running) { game in
-              ActiveGameCard(game: game) {
+              ActiveGameCard(store: store, game: game) {
                 selectedActiveGameID = game.id
               }
             }
@@ -83,6 +83,10 @@ struct TodayView: View {
       .padding(.top, DS.Spacing.l)
     }
     .dsScreenBackground()
+    .refreshable {
+      await BackendSyncService(store: store).syncAll()
+      await refreshStepHabits()
+    }
     .onAppear {
       // Seed a few habits for first-run UI (only if empty).
       if store.habits.isEmpty {

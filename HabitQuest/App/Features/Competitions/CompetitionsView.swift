@@ -64,7 +64,7 @@ struct CompetitionsView: View {
               }
 
               ForEach(activeGames) { game in
-                ActiveGameCard(game: game) {
+                ActiveGameCard(store: store, game: game) {
                   selectedActiveGameID = game.id
                 }
                 .padding(.horizontal, DS.Spacing.xl)
@@ -77,7 +77,7 @@ struct CompetitionsView: View {
 
           VStack(spacing: DS.Spacing.m) {
             let meID = store.profile?.id ?? ""
-            let privateLobbies = store.publicGames.filter { $0.visibility == .private && ($0.contains(userID: meID) || $0.createdBy.id == meID) }
+            let privateLobbies = store.publicGames.filter { $0.visibility == .private && $0.status != .finished && ($0.contains(userID: meID) || $0.createdBy.id == meID) }
             let basePublic = store.publicGames.filter { $0.visibility == .public && $0.status != .finished }
 
             let filtered = basePublic
@@ -192,6 +192,11 @@ struct CompetitionsView: View {
         .padding(.bottom, DS.Spacing.xxl)
       }
       .dsScreenBackground()
+      .refreshable {
+        await BackendSyncService(store: store).syncAll()
+        SystemEventsService(store: store).sync()
+        ActiveGamesService(store: store).tick()
+      }
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
           Button {
@@ -445,7 +450,7 @@ private struct PublicGameCard: View {
             .monospacedDigit()
         }
 
-        Text("\(game.settings.activity.title) • \(game.settings.timeLimitDays)d • \(game.settings.winCondition.title)")
+        Text(gameSubtitleLine)
           .font(DS.Typography.caption)
           .foregroundStyle(DS.Palette.subtext(scheme))
           .lineLimit(2)
@@ -513,6 +518,18 @@ private struct PublicGameCard: View {
     return "\(game.players.count)/\(game.maxPlayers)"
   }
 
+  private var gameSubtitleLine: String {
+    if variant == .systemEvent {
+      let endsAt = seasonEndsAt(game)
+      return "\(game.settings.activity.title) • \(game.settings.winCondition.title) • Season ends \(endsAt.formatted(date: .abbreviated, time: .omitted))"
+    }
+    return "\(game.settings.activity.title) • \(game.settings.timeLimitDays)d • \(game.settings.winCondition.title)"
+  }
+
+  private func seasonEndsAt(_ game: PublicGame) -> Date {
+    game.createdAt.addingTimeInterval(TimeInterval(game.settings.timeLimitDays) * 24 * 60 * 60).addingTimeInterval(-1)
+  }
+
   enum Variant: String {
     case systemEvent
     case joined
@@ -553,7 +570,12 @@ private struct PublicGameDetailSheet: View {
               Text(game.title)
                 .font(DS.Typography.title)
 
-              Text("\(game.settings.activity.title) • \(game.settings.timeLimitDays)d • \(game.settings.winCondition.title) • Score: \(game.settings.scoringSummary)")
+              if game.visibility == .systemEvent {
+                let endsAt = game.createdAt.addingTimeInterval(TimeInterval(game.settings.timeLimitDays) * 24 * 60 * 60).addingTimeInterval(-1)
+                Text("\(game.settings.activity.title) • \(game.settings.winCondition.title) • Season ends \(endsAt.formatted(date: .abbreviated, time: .omitted)) • Score: \(game.settings.scoringSummary)")
+              } else {
+                Text("\(game.settings.activity.title) • \(game.settings.timeLimitDays)d • \(game.settings.winCondition.title) • Score: \(game.settings.scoringSummary)")
+              }
                 .font(DS.Typography.body)
                 .foregroundStyle(DS.Palette.subtext(scheme))
             }
@@ -600,8 +622,35 @@ private struct PublicGameDetailSheet: View {
                   .font(DS.Typography.section)
 
                 let svc = ActiveGamesService(store: store)
-                let cutoff = svc.nextEliminationDate(for: elim) ?? .now
-                Text("Next round: \(cutoff.formatted(date: .abbreviated, time: .shortened))")
+                let cutoff: Date = {
+                  if let endsAt = elim.endsAt,
+                     let schedule = SeasonWaveService.scheduleForSystemGame(
+                      winCondition: active.settings.winCondition,
+                      seasonStart: active.createdAt,
+                      seasonEnd: endsAt
+                     ) {
+                    return SeasonWaveService.status(now: Date(), schedule: schedule).cutoff
+                  }
+                  return svc.nextEliminationDate(for: elim) ?? .now
+                }()
+
+                if let endsAt = elim.endsAt,
+                   let schedule = SeasonWaveService.scheduleForSystemGame(
+                    winCondition: active.settings.winCondition,
+                    seasonStart: active.createdAt,
+                    seasonEnd: endsAt
+                   ) {
+                  let st = SeasonWaveService.status(now: Date(), schedule: schedule)
+                  Text("Next wave (Wave \(st.currentWave.number)/\(schedule.maxWaves)) in \(CountdownFormatter.ddHHmmss(to: cutoff))")
+                    .font(DS.Typography.caption)
+                    .foregroundStyle(DS.Palette.subtext(scheme))
+                    .monospacedDigit()
+                } else {
+                  Text("Next wave in \(CountdownFormatter.ddHHmmss(to: cutoff))")
+                    .font(DS.Typography.caption)
+                    .foregroundStyle(DS.Palette.subtext(scheme))
+                    .monospacedDigit()
+                }
                   .font(DS.Typography.caption)
                   .foregroundStyle(DS.Palette.subtext(scheme))
 

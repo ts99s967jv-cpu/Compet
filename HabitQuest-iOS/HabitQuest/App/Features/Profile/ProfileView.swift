@@ -16,9 +16,13 @@ struct ProfileView: View {
           .padding(.horizontal, DS.Spacing.xl)
           .padding(.top, DS.Spacing.l)
 
-        ProfileHabitsSection(store: store)
+        // Fitness ELO (1st)
+        DSSectionHeaderRow(title: "Fitness ELO", systemImage: "gauge.with.dots.needle.67percent")
+
+        FitnessEloCard(store: store, isRefreshing: $isRefreshingElo)
           .padding(.horizontal, DS.Spacing.xl)
 
+        // Health stats (2nd)
         DSSectionHeaderRow(title: "Health stats", systemImage: "heart.text.square")
 
         VStack(spacing: DS.Spacing.m) {
@@ -29,6 +33,7 @@ struct ProfileView: View {
         }
         .padding(.horizontal, DS.Spacing.xl)
 
+        // Trends (3rd)
         if let trends {
           DSSectionHeaderRow(title: "Trends", systemImage: "chart.line.uptrend.xyaxis")
 
@@ -68,16 +73,27 @@ struct ProfileView: View {
           .padding(.horizontal, DS.Spacing.xl)
         }
 
-        DSSectionHeaderRow(title: "Fitness ELO", systemImage: "gauge.with.dots.needle.67percent")
+        // Power-ups (4th)
+        DSSectionHeaderRow(title: "Power-ups", systemImage: "sparkles")
 
-        FitnessEloCard(store: store, isRefreshing: $isRefreshingElo)
-          .padding(.horizontal, DS.Spacing.xl)
+        VStack(spacing: DS.Spacing.m) {
+          if let profile = store.profile {
+            InventoryCard(store: store, profile: profile)
+              .padding(.horizontal, DS.Spacing.xl)
+          } else {
+            Text("Sign in to manage your profile.")
+              .font(DS.Typography.body)
+              .foregroundStyle(DS.Palette.subtext(scheme))
+              .padding(.horizontal, DS.Spacing.xl)
+          }
+        }
 
-        DSSectionHeaderRow(title: "Friends", systemImage: "person.2")
+        // Friend search (5th)
+        DSSectionHeaderRow(title: "Friend search", systemImage: "magnifyingglass")
 
         VStack(alignment: .leading, spacing: DS.Spacing.s) {
           HStack {
-            Text("Friends")
+            Text("Find people")
               .font(DS.Typography.section)
             Spacer()
             Text("\(store.friends.count)")
@@ -110,25 +126,10 @@ struct ProfileView: View {
         .dsCard()
         .padding(.horizontal, DS.Spacing.xl)
 
-        DSSectionHeaderRow(title: "Account", systemImage: "person.crop.circle")
+        // Log out (6th)
+        DSSectionHeaderRow(title: "Log out", systemImage: "rectangle.portrait.and.arrow.right")
 
         VStack(alignment: .leading, spacing: DS.Spacing.s) {
-          Button {
-            showEditProfile = true
-          } label: {
-            HStack {
-              Text("Edit profile")
-                .font(DS.Typography.body.weight(.semibold))
-              Spacer()
-              Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(DS.Palette.subtext(scheme))
-            }
-          }
-          .disabled(store.profile == nil)
-
-          Divider().overlay(DS.Palette.separator(scheme))
-
           Button(role: .destructive) {
             Task {
               await Backend.shared.signOut()
@@ -147,61 +148,14 @@ struct ProfileView: View {
         .dsCard()
         .padding(.horizontal, DS.Spacing.xl)
 
-        DSSectionHeaderRow(title: "Appearance", systemImage: "circle.lefthalf.filled")
-
-        VStack(alignment: .leading, spacing: DS.Spacing.s) {
-          Text("Theme")
-            .font(DS.Typography.section)
-          Picker("Theme", selection: $store.theme) {
-            ForEach(AppTheme.allCases) { t in
-              Text(t.title).tag(t)
-            }
-          }
-          .pickerStyle(.segmented)
-          .tint(DS.Palette.accent)
-          .onChange(of: store.theme) { _, _ in store.saveAll() }
-        }
-        .dsCard()
-        .padding(.horizontal, DS.Spacing.xl)
-
-        DSSectionHeaderRow(title: "Fairness", systemImage: "checkmark.shield")
-
-        if store.profile != nil {
-          VStack(alignment: .leading, spacing: DS.Spacing.s) {
-            Toggle("Fitness tracker", isOn: Binding(
-              get: { store.profile?.hasFitnessTracker ?? false },
-              set: { newValue in
-                store.profile?.hasFitnessTracker = newValue
-                store.profile?.updatedAt = Date()
-                store.saveAll()
-              }
-            ))
-            Text("Used for fair matchmaking in games that require/avoid tracker users.")
-              .font(DS.Typography.caption)
-              .foregroundStyle(DS.Palette.subtext(scheme))
-          }
-          .dsCard()
-          .padding(.horizontal, DS.Spacing.xl)
-        }
-
-        DSSectionHeaderRow(title: "Power-ups", systemImage: "sparkles")
-
-        VStack(spacing: DS.Spacing.m) {
-          if let profile = store.profile {
-            InventoryCard(store: store, profile: profile)
-              .padding(.horizontal, DS.Spacing.xl)
-          } else {
-            Text("Sign in to manage your profile.")
-              .font(DS.Typography.body)
-              .foregroundStyle(DS.Palette.subtext(scheme))
-              .padding(.horizontal, DS.Spacing.xl)
-          }
-        }
-
         Spacer(minLength: DS.Spacing.xxl)
       }
     }
     .dsScreenBackground()
+    .refreshable {
+      await BackendSyncService(store: store).syncAll()
+      await loadTrends()
+    }
     .sheet(isPresented: $showEditProfile) {
       EditProfileSheet(store: store)
     }
@@ -544,13 +498,13 @@ private struct FitnessEloCard: View {
           Text("Fitness ELO")
             .font(DS.Typography.section)
 
-          Text("0–3000 • uses historical HealthKit trends")
+          Text("Competitive rating used for matchmaking")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
         }
         Spacer()
-        if let elo = store.profile?.fitnessElo, store.profile?.hasFitnessTracker == true {
-          Text("\(elo)")
+        if let profile = store.profile {
+          Text("\(profile.fitnessElo)")
             .font(DS.Typography.stat)
             .monospacedDigit()
         } else {
@@ -560,24 +514,30 @@ private struct FitnessEloCard: View {
         }
       }
 
-      if store.profile?.hasFitnessTracker != true {
-        Text("Requires a fitness tracker. Enable “Fitness tracker” to compute your ELO.")
-          .font(DS.Typography.body)
+      if let profile = store.profile {
+        let service = FitnessEloService(store: store)
+        let tier = service.tier(elo: profile.fitnessElo, age: profile.age)
+        let pct = service.agePercentileRank(elo: profile.fitnessElo, age: profile.age)
+        let pctText = "\(Int((pct * 100).rounded()))th percentile"
+        let range = service.recommendedMatchRange(elo: profile.fitnessElo)
+        let momentum = store.fitnessMomentum(days: 30) ?? 0
+
+        Text("Tier: \(tier) • Age rank: \(pctText)")
+          .font(DS.Typography.caption)
           .foregroundStyle(DS.Palette.subtext(scheme))
-      } else {
-        if let ts = store.profile?.fitnessEloUpdatedAt {
+
+        Text("Momentum (30d): \(momentum >= 0 ? "+" : "")\(momentum) • Matchmaking: \(range.lowerBound)–\(range.upperBound)")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Palette.subtext(scheme))
+
+        if let ts = profile.fitnessEloUpdatedAt {
           Text("Updated \(ts.formatted(date: .abbreviated, time: .shortened))")
-            .font(DS.Typography.caption)
-            .foregroundStyle(DS.Palette.subtext(scheme))
-        } else {
-          Text("Not computed yet.")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
         }
 
-        if let elo = store.profile?.fitnessElo {
-          let range = FitnessEloService(store: store).recommendedMatchRange(elo: elo)
-          Text("Matchmaking target: \(range.lowerBound)–\(range.upperBound)")
+        if profile.hasFitnessTracker != true {
+          Text("Enable “Fitness tracker” to incorporate Apple Health data into your rating.")
             .font(DS.Typography.caption)
             .foregroundStyle(DS.Palette.subtext(scheme))
         }
@@ -593,7 +553,7 @@ private struct FitnessEloCard: View {
             if isRefreshing {
               ProgressView().tint(DS.Palette.accent)
             }
-            Text(isRefreshing ? "Updating…" : "Update Fitness ELO")
+            Text(isRefreshing ? "Updating…" : "Update rating")
               .frame(maxWidth: .infinity)
               .padding(.vertical, DS.Spacing.s)
           }

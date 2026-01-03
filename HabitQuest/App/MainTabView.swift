@@ -13,6 +13,9 @@ struct MainTabView: View {
 
       ProfileView(store: store)
         .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+
+      SettingsView(store: store)
+        .tabItem { Label("Settings", systemImage: "gearshape") }
     }
     .tint(DS.Palette.accent)
     .toolbarBackground(.ultraThinMaterial, for: .tabBar)
