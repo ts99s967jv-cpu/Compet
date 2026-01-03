@@ -96,7 +96,9 @@ final class HealthKitScoringService {
   }
 
   private func sumQuantityStatistics(type: HKQuantityType, unit: HKUnit, start: Date, end: Date) async throws -> Double {
-    let pred = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+    // Do NOT use `.strictStartDate` here: many HealthKit sources write interval samples that start
+    // before `start` but overlap the window. A strict predicate can undercount badly vs the Health app.
+    let pred = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
     let hkStore = store
     return try await withCheckedThrowingContinuation { cont in
       let q = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: pred, options: .cumulativeSum) { _, stats, error in
@@ -109,7 +111,9 @@ final class HealthKitScoringService {
   }
 
   private func sumQuantitySamples(type: HKQuantityType, unit: HKUnit, start: Date, end: Date, sourceFilter: SourceFilter) async throws -> Double {
-    let pred = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+    // Best-effort: don't be strict or we undercount (esp. steps/energy). For phone-only filtering,
+    // we can't easily pro-rate partial overlaps, but including overlaps matches user expectations better.
+    let pred = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
     let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
 
     let hkStore = store
