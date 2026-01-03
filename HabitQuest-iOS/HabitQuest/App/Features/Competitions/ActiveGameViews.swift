@@ -462,11 +462,13 @@ struct ActiveGameDetailSheet: View {
            ) {
           let st = SeasonWaveService.status(now: now, schedule: schedule)
           Text("Wave \(st.currentWave.number)/\(schedule.maxWaves) • \(elim.cadence.title) elimination")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
         } else {
           Text("Round \(elim.roundIndex + 1) • \(elim.cadence.title) elimination")
+            .font(DS.Typography.caption)
+            .foregroundStyle(DS.Palette.subtext(scheme))
         }
-          .font(DS.Typography.caption)
-          .foregroundStyle(DS.Palette.subtext(scheme))
 
         let wave = nextWave(for: game, elim: elim, cutoff: cutoff, now: now)
         Text("\(wave.label): \(waveDisplayDate(wave.date, for: game).formatted(date: .abbreviated, time: .omitted))")
